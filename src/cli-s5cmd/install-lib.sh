@@ -476,7 +476,8 @@ _il_apt_key_prepare() (
         gpg --batch --quiet --dearmor -o "${tmp}/keyring.gpg" "${tmp}/key" \
             || _il_die "il_apt_add_repo: cannot unarmor the key from ${key_url}"
     else
-        cp "${tmp}/key" "${tmp}/keyring.gpg"
+        cp "${tmp}/key" "${tmp}/keyring.gpg" \
+            || _il_die "il_apt_add_repo: cannot write ${tmp}/keyring.gpg"
     fi
     # The fingerprint is checked on the exact bytes apt will trust. Every
     # primary key counts: a second one would be trusted for the repository
