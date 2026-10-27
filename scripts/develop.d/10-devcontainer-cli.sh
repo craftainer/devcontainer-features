@@ -19,7 +19,9 @@ trap 'rm -rf "$npm_cache"' EXIT
 
 # npm does its own downloads, so (like ../develop.sh's installers) only the
 # whole install is retried, a bounded number of times with doubling delays,
-# so CI's shared-IP registry errors don't fail the image build.
+# so CI's shared-IP registry errors don't fail the image build. A copy of
+# ../develop.sh's retry() (this hook runs on its own, so it can't source
+# that one); keep the two in step when base changes it.
 retry() {
     local attempt=1 max=4 delay=5
     until "$@"; do

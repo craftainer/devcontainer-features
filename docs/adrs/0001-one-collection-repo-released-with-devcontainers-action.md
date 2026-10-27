@@ -52,19 +52,20 @@ We will release features with `devcontainers/action` from an
 instance-owned `.github/workflows/features.yml` (validate on pull
 requests, test, and publish on `main`), and each feature is versioned on
 its own through its `devcontainer-feature.json`. Base's `release.yml` and
-`Makefile` targets stay as base's documented no-ops; this repo is never
-released through a repo-wide tag.
+`Makefile` targets stay as base's documented no-ops, and this repo isn't
+released through a repo-wide tag: base's manually dispatched Release
+workflow is never run here.
 
 ## Consequences
 
 - Consumers reference one namespace and pin each feature's version on its
   own. A fix to one feature doesn't bump the others.
 - Every change under `src/<id>/` must raise that feature's `version`, or
-  the publish silently skips it. A prek hook enforces this against
-  `origin/main`.
+  the publish silently skips it. A prek hook is to enforce this against
+  `origin/main`; until it lands, reviewers check it.
 - The features share `common/install-lib.sh`, but a feature folder is
   packaged on its own, so each `src/<id>/` carries a verbatim copy of it.
-  A prek hook fails when a copy drifts.
+  A prek hook is to fail when a copy drifts.
 - `features.yml`, `src/`, `test/` and `common/` are instance-owned and
   listed in `.github/template-sync-manifest.local.yml`, so template sync
   never touches them. Base's release tooling still syncs in, unused.
