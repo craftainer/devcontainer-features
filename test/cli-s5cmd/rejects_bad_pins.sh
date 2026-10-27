@@ -37,7 +37,7 @@ as_root() {
 # s5cmd is unchanged.
 expect_rejected() {
     local scratch result=0
-    scratch="$(mktemp -d)"
+    scratch="$(mktemp -d)" || return 1
     _expect_rejected_in "$scratch" "$@" || result=$?
     as_root rm -rf "$scratch"
     return "$result"
@@ -92,18 +92,32 @@ check "a wrong sha fails and leaves nothing in TMPDIR" expect_rejected \
     VERSION="$installed_version" SHA256_AMD64="$zeros" SHA256_ARM64="$zeros"
 
 # fetch_mismatch_deletes_dest: il_fetch_verified, called outside any trap,
-# fails on a wrong sha and deletes <dest> itself.
+# fails with a sha mismatch (not some other error) and deletes <dest> itself.
 fetch_mismatch_deletes_dest() {
-    local dir dest status=0
-    dir="$(mktemp -d)"
+    local dir dest asset_arch out status=0 result=0
+    case "$(uname -m)" in
+        x86_64) asset_arch=64bit ;;
+        *) asset_arch=arm64 ;;
+    esac
+    dir="$(mktemp -d)" || return 1
     dest="${dir}/s5cmd.tar.gz"
-    bash -c '. "$1" && il_fetch_verified "$2" "$3" "$4"' _ \
+    out="$(bash -c '. "$1" && il_fetch_verified "$2" "$3" "$4"' _ \
         "$(dirname "$install_sh")/install-lib.sh" \
-        "https://github.com/peak/s5cmd/releases/download/v${installed_version}/s5cmd_${installed_version}_Linux-64bit.tar.gz" \
-        "$zeros" "$dest" || status=$?
-    [ ! -e "$dest" ] || status=0
+        "https://github.com/peak/s5cmd/releases/download/v${installed_version}/s5cmd_${installed_version}_Linux-${asset_arch}.tar.gz" \
+        "$zeros" "$dest" 2>&1)" || status=$?
+    printf '%s\n' "$out"
+    if [ "$status" -eq 0 ]; then
+        echo "il_fetch_verified succeeded; expected a sha mismatch" >&2
+        result=1
+    elif ! printf '%s\n' "$out" | grep -q 'sha256 mismatch for '; then
+        echo "il_fetch_verified failed, but not with a sha mismatch" >&2
+        result=1
+    elif [ -e "$dest" ]; then
+        echo "il_fetch_verified left ${dest} behind after a mismatch" >&2
+        result=1
+    fi
     rm -rf "$dir"
-    [ "$status" -ne 0 ]
+    return "$result"
 }
 check "il_fetch_verified deletes its download on a sha mismatch" fetch_mismatch_deletes_dest
 check "a version with a leading v fails" expect_rejected \
