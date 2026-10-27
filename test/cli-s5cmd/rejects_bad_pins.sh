@@ -76,6 +76,14 @@ check "a version option without its sha fails" expect_rejected \
 check "sha options without the version fail" expect_rejected \
     'the feature options set sha256_(amd64|arm64) but not version' \
     SHA256_AMD64="$zeros" SHA256_ARM64="$zeros"
+case "$(uname -m)" in
+    x86_64) other_arch=ARM64 ;;
+    *) other_arch=AMD64 ;;
+esac
+check "only the other arch's sha option fails, without falling through" expect_rejected \
+    'the feature options set sha256_(amd64|arm64) but not version or sha256_(amd64|arm64) \(this machine is (amd64|arm64)\)' \
+    "SHA256_${other_arch}=${zeros}" CLI_S5CMD_VERSION="$installed_version" \
+    "CLI_S5CMD_SHA256_AMD64=${zeros}" "CLI_S5CMD_SHA256_ARM64=${zeros}"
 check "an image environment version without its sha fails" expect_rejected \
     'the image environment set CLI_S5CMD_VERSION but not CLI_S5CMD_SHA256_(AMD64|ARM64)' \
     CLI_S5CMD_VERSION="$installed_version"

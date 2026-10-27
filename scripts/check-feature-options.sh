@@ -22,9 +22,16 @@ set -euo pipefail
 
 pin_options='["version","sha256","sha256_amd64","sha256_arm64","pins_file","certs","urls","sha256s"]'
 
-status=0
 shopt -s nullglob
-for meta in src/*/devcontainer-feature.json; do
+metas=(src/*/devcontainer-feature.json)
+# Without jq every file below would be reported as invalid JSON.
+if [ "${#metas[@]}" -gt 0 ] && ! command -v jq >/dev/null 2>&1; then
+    echo "check-feature-options: jq is required but not installed (apt-get install jq)" >&2
+    exit 1
+fi
+
+status=0
+for meta in "${metas[@]}"; do
     dir="${meta%/devcontainer-feature.json}"
     if ! jq -e '(.options // {}) | type == "object"' "$meta" >/dev/null 2>&1; then
         echo "check-feature-options: ${meta}: not valid JSON, or \"options\" is not an object" >&2
