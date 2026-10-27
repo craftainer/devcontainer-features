@@ -1,0 +1,59 @@
+{
+  "option_channel": {
+    "//renovate": "datasource=github-releases depName=peak/s5cmd extractVersion=^v(?<version>.+)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-s5cmd": {
+        "version": "2.3.0",
+        "sha256_amd64": "de0fdbfa3aceae55e069ba81a0fc17b2026567637603734a387b2fca06c299b4",
+        "sha256_arm64": "1439f0d00ecedcd2a2f1f2c6749bbb0152b2257bf5086f29646ec8ae38798e24"
+      }
+    }
+  },
+  "env_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-s5cmd": {}
+    }
+  },
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-s5cmd": {}
+    }
+  },
+  "pins_file_option": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-s5cmd": {
+        "pins_file": "/opt/pins/s5cmd.env"
+      }
+    }
+  },
+  "rejects_bad_pins": {
+    "//renovate": "datasource=github-releases depName=peak/s5cmd extractVersion=^v(?<version>.+)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-s5cmd": {
+        "version": "2.3.0",
+        "sha256_amd64": "de0fdbfa3aceae55e069ba81a0fc17b2026567637603734a387b2fca06c299b4",
+        "sha256_arm64": "1439f0d00ecedcd2a2f1f2c6749bbb0152b2257bf5086f29646ec8ae38798e24"
+      }
+    }
+  }
+}
