@@ -92,13 +92,15 @@ il_fetch_verified "$url" "$IL_SHA256" "${tmp}/${asset}"
 # client/lib/). It finds them through its own resolved path, so symlinks
 # on PATH work.
 mkdir "${tmp}/stage"
-tar -xzf "${tmp}/${asset}" -C "${tmp}/stage" --no-same-owner --strip-components=2 \
-    "keycloak-${IL_VERSION}/bin/kcadm.sh" "keycloak-${IL_VERSION}/bin/client"
-rm -f "${tmp}/${asset}"
-if [ ! -f "${tmp}/stage/kcadm.sh" ] || [ ! -d "${tmp}/stage/client" ]; then
+# tar fails when a named member is missing, so check its status, not just
+# the result.
+if ! tar -xzf "${tmp}/${asset}" -C "${tmp}/stage" --no-same-owner --strip-components=2 \
+    "keycloak-${IL_VERSION}/bin/kcadm.sh" "keycloak-${IL_VERSION}/bin/client" \
+    || [ ! -f "${tmp}/stage/kcadm.sh" ] || [ ! -d "${tmp}/stage/client" ]; then
     echo "cli-keycloak: ${asset} has no bin/kcadm.sh or bin/client/" >&2
     exit 1
 fi
+rm -f "${tmp}/${asset}"
 chmod -R u=rwX,go=rX "${tmp}/stage"
 chmod 0755 "${tmp}/stage/kcadm.sh"
 
@@ -118,14 +120,16 @@ java_major() {
         | awk -F'= ' '/^[[:space:]]*java\.specification\.version =/ { sub(/^1\./, "", $2); split($2, v, "."); print v[1]; exit }'
 }
 
-if command -v java >/dev/null 2>&1; then
+# kcadm.sh runs the first java on PATH, which may not be the JRE just
+# installed, so the message names the one it found.
+if java_bin="$(command -v java)"; then
     major="$(java_major)"
     if ! [[ "$major" =~ ^[0-9]+$ ]] || [ "$major" -lt "$min_java" ]; then
         if [ "$install_jre" = true ]; then
-            echo "cli-keycloak: default-jre-headless gave Java '${major}', but kcadm needs ${min_java} or newer" >&2
+            echo "cli-keycloak: the first java on PATH (${java_bin}) is version '${major}', but kcadm needs ${min_java} or newer; default-jre-headless was installed, so check for an older java earlier on PATH" >&2
             exit 1
         fi
-        echo "cli-keycloak: warning: java on PATH is version '${major}'; kcadm needs ${min_java} or newer" >&2
+        echo "cli-keycloak: warning: java on PATH (${java_bin}) is version '${major}'; kcadm needs ${min_java} or newer" >&2
     fi
 elif [ "$install_jre" = true ]; then
     echo "cli-keycloak: default-jre-headless installed no java on PATH" >&2
