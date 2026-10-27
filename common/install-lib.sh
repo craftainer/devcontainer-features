@@ -89,11 +89,15 @@ _il_pins_get() {
         [ "$k" = "$key" ] || continue
         [ "$k" != "$line" ] || continue # no "=" on this line
         v="${line#*=}"
-        v="${v#"${v%%[![:blank:]]*}"}"
+        local trimmed="${v#"${v%%[![:blank:]]*}"}"
+        # "KEY= # comment" sets nothing; "KEY=#x" keeps "#x", as sourcing does.
+        [ "$trimmed" = "$v" ] || case "$trimmed" in '#'*) trimmed="" ;; esac
+        v="$trimmed"
+        # An unterminated quote is kept, so validation rejects the value.
         case "$v" in
-            \"*) v="${v#\"}" v="${v%%\"*}" ;;
-            \'*) v="${v#\'}" v="${v%%\'*}" ;;
-            '#'*) v="" ;; # "KEY= # comment" sets nothing
+            \"*\"*) v="${v#\"}" v="${v%%\"*}" ;;
+            \'*\'*) v="${v#\'}" v="${v%%\'*}" ;;
+            \"* | \'*) ;;
             *)
                 v="${v%%[[:blank:]]#*}"
                 v="${v%"${v##*[![:blank:]]}"}"
@@ -218,9 +222,11 @@ il_fetch_verified() {
     # connections (exit 7) and HTTP 408/429/5xx. DNS failures (exit 6),
     # resets and truncated transfers (18/52/55/56) are also retried here, as
     # in scripts/develop.sh's fetch. Worst case: 4 curl calls of up to 4
-    # attempts each (16), each call's retries capped at 60s, plus 12s of
-    # sleeps here. A permanent HTTP error (-f, exit 22) or a TLS failure
-    # still fails at once.
+    # attempts each (16), plus 12s of sleeps here; --retry-max-time 60 stops
+    # each call starting new retries after 60s, but an attempt itself has no
+    # time limit, so a stalled transfer runs until the job's timeout. A
+    # permanent HTTP error (-f, exit 22) or a TLS failure still fails at
+    # once.
     local attempt=1 status
     while :; do
         status=0
@@ -260,7 +266,8 @@ il_install_bin() {
 # il_user_state_dir <path-relative-to-home>...: creates each directory
 # under $_REMOTE_USER_HOME, owned by $_REMOTE_USER, mode 0700. Parent
 # directories it has to create (e.g. ~/.config) are owned by the user too,
-# mode 0755; parents that already exist are left alone. A named volume
+# mode 0755; parents that already exist are left alone, except that a
+# symlink at any component under the home is refused. A named volume
 # mounted on the directory later starts out with this ownership.
 il_user_state_dir() {
     local user="${_REMOTE_USER:-}" home="${_REMOTE_USER_HOME:-}" group rel dir part
