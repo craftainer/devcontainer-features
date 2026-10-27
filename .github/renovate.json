@@ -25,6 +25,13 @@
       "matchManagers": ["devcontainer"],
       "matchDepTypes": ["feature"],
       "enabled": false
+    },
+    {
+      "description": "Feature test pins (test/**) pair each version with sha256s Renovate can't compute. Their PR fails the feature tests until a maintainer updates the shas by hand, so it gets its own group and never automerges (docs/adrs/0002-resolve-pins-from-option-env-or-pins-file-with-no-defaults.md).",
+      "matchFileNames": ["test/**"],
+      "groupName": "feature test pins",
+      "automerge": false,
+      "prBodyNotes": ["Renovate bumped only the versions. Update every sha256 next to each bumped version (option, ENV line or pins file) before merging; the feature tests fail until you do."]
     }
   ],
   "customManagers": [
@@ -55,6 +62,37 @@
       ],
       "matchStrings": [
         "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s*\\n\\s*(?:runs-on|runner): \\$\\{\\{ vars\\.[A-Z0-9_]+ \\|\\| '(?<currentValue>[^']+)' \\}\\}"
+      ]
+    },
+    {
+      "description": "Feature test pins in scenarios.json: a \"//renovate\" key, then the \"version\" it tracks with no closing brace in between (docs/adrs/0002-resolve-pins-from-option-env-or-pins-file-with-no-defaults.md).",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^test/[^/]+/scenarios\\.json$/"
+      ],
+      "matchStrings": [
+        "\"//renovate\":\\s*\"datasource=(?<datasource>[^\\s\"]+) depName=(?<depName>[^\\s\"]+)(?: extractVersion=(?<extractVersion>[^\\s\"]+))?\"[^}]*?\"version\":\\s*\"(?<currentValue>[^\"]+)\""
+      ]
+    },
+    {
+      "description": "Feature test pins for the image-environment and pins-file channels: a \"# renovate:\" comment directly above an ENV KEY=value or [export] KEY=value line (the legacy ENV KEY value form is not matched).",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^test/.+/Dockerfile$/",
+        "/^test/.+\\.env$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n[ \\t]*(?:ENV[ \\t]+|export[ \\t]+)?[A-Z0-9_]+_VERSION=[\"']?(?<currentValue>[^\\s\"'#]+)"
+      ]
+    },
+    {
+      "description": "Version pins in features.yml's env: block (the Dev Container CLI, kept in step with scripts/develop.d/10-devcontainer-cli.sh).",
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^\\.github/workflows/features\\.yml$/"
+      ],
+      "matchStrings": [
+        "# renovate: datasource=(?<datasource>.*?) depName=(?<depName>.*?)\\s*\\n\\s*[A-Z0-9_]+_VERSION: (?<currentValue>\\S+)"
       ]
     }
   ]
