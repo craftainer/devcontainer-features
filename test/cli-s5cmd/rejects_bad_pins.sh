@@ -36,9 +36,16 @@ as_root() {
 # its output matches <ERE>, its TMPDIR is left empty and the installed
 # s5cmd is unchanged.
 expect_rejected() {
-    local pattern="$1" scratch out status=0
-    shift
+    local scratch result=0
     scratch="$(mktemp -d)"
+    _expect_rejected_in "$scratch" "$@" || result=$?
+    as_root rm -rf "$scratch"
+    return "$result"
+}
+
+_expect_rejected_in() {
+    local scratch="$1" pattern="$2" out status=0
+    shift 2
     out="$(as_root env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
         TMPDIR="$scratch" "$@" bash "$install_sh" 2>&1)" || status=$?
     printf '%s\n' "$out"
@@ -59,7 +66,6 @@ expect_rejected() {
         echo "install.sh changed /usr/local/bin/s5cmd" >&2
         return 1
     fi
-    as_root rm -rf "$scratch"
 }
 
 check "no pin anywhere fails, naming all three channels" expect_rejected \
@@ -79,9 +85,30 @@ check "a pins file version without its sha fails" expect_rejected \
 check "a malformed sha fails" expect_rejected \
     'sha256_(amd64|arm64) .not-a-sha. is not a sha256' \
     VERSION="$installed_version" SHA256_AMD64=not-a-sha SHA256_ARM64=not-a-sha
-check "a wrong sha fails and deletes the download" expect_rejected \
+# The empty-TMPDIR check here covers install.sh's EXIT trap as a whole;
+# fetch_mismatch_deletes_dest below checks il_fetch_verified's own delete.
+check "a wrong sha fails and leaves nothing in TMPDIR" expect_rejected \
     'sha256 mismatch for https://github.com/peak/s5cmd/releases/download/' \
     VERSION="$installed_version" SHA256_AMD64="$zeros" SHA256_ARM64="$zeros"
+
+# fetch_mismatch_deletes_dest: il_fetch_verified, called outside any trap,
+# fails on a wrong sha and deletes <dest> itself.
+fetch_mismatch_deletes_dest() {
+    local dir dest status=0
+    dir="$(mktemp -d)"
+    dest="${dir}/s5cmd.tar.gz"
+    bash -c '. "$1" && il_fetch_verified "$2" "$3" "$4"' _ \
+        "$(dirname "$install_sh")/install-lib.sh" \
+        "https://github.com/peak/s5cmd/releases/download/v${installed_version}/s5cmd_${installed_version}_Linux-64bit.tar.gz" \
+        "$zeros" "$dest" || status=$?
+    [ ! -e "$dest" ] || status=0
+    rm -rf "$dir"
+    [ "$status" -ne 0 ]
+}
+check "il_fetch_verified deletes its download on a sha mismatch" fetch_mismatch_deletes_dest
+check "a version with a leading v fails" expect_rejected \
+    "version 'v${installed_version}' must not start with v" \
+    VERSION="v${installed_version}" SHA256_AMD64="$zeros" SHA256_ARM64="$zeros"
 
 rm -f "$bad_pins"
 

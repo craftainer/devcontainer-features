@@ -10,6 +10,14 @@ set -euo pipefail
 
 il_require_root
 il_resolve_pin CLI_S5CMD true
+# The release tag adds the v itself; a pinned "v2.3.0" would fetch tag
+# vv2.3.0 and fail as an unexplained 404.
+case "$IL_VERSION" in
+    v*)
+        echo "cli-s5cmd: version '${IL_VERSION}' must not start with v (use ${IL_VERSION#v})" >&2
+        exit 1
+        ;;
+esac
 
 arch="$(il_arch)"
 case "$arch" in
