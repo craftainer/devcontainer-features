@@ -15,6 +15,9 @@
 # bash as an essential package. Sourcing this file sets no shell options;
 # install.sh sets its own (set -euo pipefail). Every failure prints a
 # message to stderr and exits 1, so install.sh fails at the right step.
+#
+# Every feature that calls il_resolve_pin must declare its "version", sha
+# options and "pins_file" options with "default": "" (see il_resolve_pin).
 
 # Prints "install-lib: <message>" to stderr and exits 1.
 _il_die() {
@@ -62,11 +65,12 @@ il_apt_install() {
 #
 # The file is parsed, never sourced: only lines of the form KEY=value are
 # read, after optional leading blanks and an optional "export" plus blanks.
-# Blank lines and lines starting with # are skipped. A trailing comment
-# (blanks, then #) and trailing blanks are dropped, then one pair of
-# matching surrounding quotes ('...' or "...") is stripped; nothing is
-# expanded, and a value can't contain " #". If a key appears more than
-# once the last line wins, as it would when sourced.
+# Blank lines and lines starting with # are skipped. Blanks after "=" are
+# trimmed. A value that starts with a quote (' or ") runs to the next
+# matching quote, and the rest of the line is ignored. An unquoted value
+# ends before a trailing comment (blanks, then #), with trailing blanks
+# dropped. Nothing is expanded. If a key appears more than once the last
+# line wins, as it would when sourced.
 _il_pins_get() {
     local file="$1" key="$2" line k v found=""
     while IFS= read -r line || [ -n "$line" ]; do
@@ -85,11 +89,15 @@ _il_pins_get() {
         [ "$k" = "$key" ] || continue
         [ "$k" != "$line" ] || continue # no "=" on this line
         v="${line#*=}"
-        v="${v%%[[:blank:]]#*}"
-        v="${v%"${v##*[![:blank:]]}"}"
+        v="${v#"${v%%[![:blank:]]*}"}"
         case "$v" in
-            \"*\") v="${v#\"}" v="${v%\"}" ;;
-            \'*\') v="${v#\'}" v="${v%\'}" ;;
+            \"*) v="${v#\"}" v="${v%%\"*}" ;;
+            \'*) v="${v#\'}" v="${v%%\'*}" ;;
+            '#'*) v="" ;; # "KEY= # comment" sets nothing
+            *)
+                v="${v%%[[:blank:]]#*}"
+                v="${v%"${v##*[![:blank:]]}"}"
+                ;;
         esac
         found="$v"
     done <"$file"
@@ -116,7 +124,13 @@ _il_pins_get() {
 # $VERSION is the generic name the "version" option arrives under, so
 # install.sh must not set it before this call: read /etc/os-release in a
 # subshell, e.g. codename="$(. /etc/os-release && echo "$VERSION_CODENAME")",
-# never by sourcing it into install.sh's own shell.
+# never by sourcing it into install.sh's own shell. A VERSION inherited
+# from the base image's ENV or exported by an earlier feature is shadowed
+# only because every feature declares "version", its sha options and
+# "pins_file" with "default": "": the Dev Container CLI writes each declared
+# option, defaults included, to devcontainer-features.env and sources it
+# with set -a before install.sh runs, so VERSION="" always replaces an
+# inherited value.
 il_resolve_pin() {
     local id="${1:-}" arch_specific="${2:-}" arch sha_opt
     case "$id" in
@@ -200,11 +214,13 @@ il_fetch_verified() {
     if ! command -v curl >/dev/null 2>&1; then
         il_apt_install curl ca-certificates
     fi
-    # curl's --retry (+ --retry-connrefused) covers timeouts, refused
-    # connections and HTTP 408/429/5xx. DNS and connect failures (exit 6/7),
-    # resets and truncated transfers (18/52/55/56) are retried here, at most
-    # 4 tries, as in scripts/develop.sh's fetch; a permanent HTTP error (-f,
-    # exit 22) or a TLS failure still fails at once.
+    # curl's own --retry 3 (+ --retry-connrefused) covers timeouts, refused
+    # connections (exit 7) and HTTP 408/429/5xx. DNS failures (exit 6),
+    # resets and truncated transfers (18/52/55/56) are also retried here, as
+    # in scripts/develop.sh's fetch. Worst case: 4 curl calls of up to 4
+    # attempts each (16), each call's retries capped at 60s, plus 12s of
+    # sleeps here. A permanent HTTP error (-f, exit 22) or a TLS failure
+    # still fails at once.
     local attempt=1 status
     while :; do
         status=0
@@ -212,7 +228,7 @@ il_fetch_verified() {
             -o "$dest" "$url" || status=$?
         case "$status" in
             0) break ;;
-            6 | 7 | 18 | 52 | 55 | 56)
+            6 | 18 | 52 | 55 | 56)
                 if [ "$attempt" -lt 4 ]; then
                     echo "install-lib: curl exit ${status}; retrying (${attempt}/3): ${url}" >&2
                     sleep $((attempt * 2))
@@ -266,16 +282,17 @@ il_user_state_dir() {
         for part in "${parts[@]}"; do
             [ -n "$part" ] || continue
             dir="${dir}/${part}"
+            # chown and chmod follow symlinks, and mkdir creates under a
+            # symlinked parent, so any symlinked component would hand (part
+            # of) its target to the user; refuse it instead.
+            if [ -L "$dir" ]; then
+                _il_die "il_user_state_dir: ${dir} is a symlink; refusing to change its target"
+            fi
             if [ ! -d "$dir" ]; then
                 mkdir -m 0755 "$dir" || _il_die "il_user_state_dir: cannot create ${dir}"
                 chown "${user}:${group}" "$dir" || _il_die "il_user_state_dir: cannot chown ${dir}"
             fi
         done
-        # chown and chmod follow symlinks, so a symlinked state dir would
-        # hand its target to the user; refuse it instead.
-        if [ -L "$dir" ]; then
-            _il_die "il_user_state_dir: ${dir} is a symlink; refusing to change its target"
-        fi
         chown "${user}:${group}" "$dir" || _il_die "il_user_state_dir: cannot chown ${dir}"
         chmod 0700 "$dir" || _il_die "il_user_state_dir: cannot chmod ${dir}"
     done

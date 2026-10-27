@@ -65,6 +65,15 @@ sha256 from the first of these channels that sets either of them:
 If no channel sets either value, the install fails with an error that
 names all three channels. There are no bundled defaults.
 
+**Every pin option is declared with `"default": ""`.** That covers
+`version`, the sha options and `pins_file` (empty means the default
+path). The Dev Container CLI writes every declared option, defaults
+included, to `devcontainer-features.env` and sources it with `set -a`
+before `install.sh` runs. An empty `VERSION` therefore always replaces a
+`VERSION` inherited from the base image's `ENV` or exported by an earlier
+feature, which would otherwise be taken as the option. For the same
+reason, `install.sh` reads `/etc/os-release` only in a subshell.
+
 **Version and sha come from the same channel.** "The first non-empty value
 wins" is applied to the pair, not to each variable on its own. A channel
 that sets a version without the sha for this arch, or a sha without its
@@ -82,10 +91,13 @@ feature reads is `<ID>_<OPTION>`, with the option id upper-cased the same
 way.
 
 **The pins file is parsed, never sourced.** Only `KEY=value` lines are
-read (optionally prefixed with `export `), blank lines and `#` comments are
-skipped, a trailing ` # comment` and trailing blanks are dropped, one pair
-of surrounding quotes is stripped, and nothing is expanded. Only the feature's own `<ID>_*` keys are looked up, so one file
-can hold the pins of every feature. A repeated key takes its last value.
+read, optionally after leading blanks and `export` plus blanks (spaces or
+tabs). Blank lines and `#` comment lines are skipped, and blanks after `=`
+are trimmed. A value that starts with a quote runs to the matching quote
+and the rest of the line is ignored. An unquoted value ends before a
+trailing ` # comment`, with trailing blanks dropped. Nothing is expanded.
+Only the feature's own `<ID>_*` keys are looked up, so one file can hold
+the pins of every feature. A repeated key takes its last value.
 Versions must match `[A-Za-z0-9][A-Za-z0-9._+~-]*` and shas must be 64 hex
 digits, because both end up in URLs and file names.
 

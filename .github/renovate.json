@@ -75,14 +75,14 @@
       ]
     },
     {
-      "description": "Feature test pins for the image-environment and pins-file channels: a \"# renovate:\" comment directly above an ENV or KEY=value line.",
+      "description": "Feature test pins for the image-environment and pins-file channels: a \"# renovate:\" comment directly above an ENV KEY=value or [export] KEY=value line (the legacy ENV KEY value form is not matched).",
       "customType": "regex",
       "managerFilePatterns": [
         "/^test/.+/Dockerfile$/",
         "/^test/.+\\.env$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n(?:ENV |export )?[A-Z0-9_]+_VERSION=[\"']?(?<currentValue>[^\\s\"'#]+)"
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n[ \\t]*(?:ENV[ \\t]+|export[ \\t]+)?[A-Z0-9_]+_VERSION=[\"']?(?<currentValue>[^\\s\"'#]+)"
       ]
     },
     {
