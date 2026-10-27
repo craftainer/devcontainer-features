@@ -21,7 +21,8 @@ kcadm GET /admin/realms/master/users
 `official` puts `kcadm.sh` and its client jars in
 `/usr/local/lib/keycloak-cli`, with `kcadm` and `kcadm.sh` on `PATH`.
 `rest` installs only `/usr/local/bin/kcadm`; it downloads nothing, so it
-needs no version or sha256 and ignores them if they are set.
+needs no version or sha256. If one is set anyway (in any of the three
+places below), the install warns that it is ignored and goes on.
 
 The flavor comes from the first of these that sets it: the `flavor`
 option, `CLI_KEYCLOAK_FLAVOR` in the image environment, or
@@ -133,14 +134,20 @@ path in the image:
 `kcadm.sh` runs on the JVM, and Keycloak 26 needs Java 21 or newer. With
 `install_jre` on (the default), the feature installs the distro's
 `default-jre-headless`, which is OpenJDK 21 on Debian 13 and Ubuntu
-24.04, and fails if the result is older than 21.
+24.04.
+
+After installing, the feature checks the java that `kcadm.sh` will run,
+picked the way `kcadm.sh` picks it: `$JAVA` if set, else
+`$JAVA_HOME/bin/java` if `JAVA_HOME` is set, else `java` on `PATH`. So a
+`JAVA_HOME` in your image pointing at an older JDK takes precedence over
+the JRE just installed. With `install_jre` on, a missing java, or one
+older than 21, fails the install, naming the java it found.
 
 Set `install_jre` to `false` if your image already has Java, for example
-from the official `java` feature. kcadm is then installed without
-checking for Java. **Java 21 or newer must still be on `PATH` (or in
-`JAVA_HOME`) when you run kcadm**; the install prints a note if none is
-there yet, and a warning if it finds an older one. `install_jre` is
-ignored for `rest`.
+from the official `java` feature. The same check then only warns, and
+the install succeeds either way. **Java 21 or newer must still be
+reachable that way when you run kcadm.** `install_jre` is ignored for
+`rest`.
 
 ## The `rest` wrapper
 

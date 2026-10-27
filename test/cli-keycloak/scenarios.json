@@ -43,6 +43,19 @@
       }
     }
   },
+  "official_old_java": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-keycloak": {
+        "install_jre": false
+      }
+    }
+  },
   "rest_option": {
     "image": "mcr.microsoft.com/devcontainers/base:trixie",
     "features": {

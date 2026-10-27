@@ -80,7 +80,7 @@ expect_official() {
         check "kcadm.sh --help runs under the JRE" _runs_help kcadm.sh
         check "kcadm --help runs under the JRE" _runs_help kcadm
     else
-        check "no Java is installed" _no_java
+        check "no java on PATH and no default-jre-headless" _no_java
     fi
     check "the feature declares no mounts" _feature_declares_no_mounts
 }

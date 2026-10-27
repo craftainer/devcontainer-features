@@ -117,6 +117,95 @@ check "a wrong sha fails and leaves nothing in TMPDIR" expect_rejected \
     "sha256 mismatch for https://github.com/keycloak/keycloak/releases/download/${version}/keycloak-${version}.tar.gz" \
     VERSION="$version" SHA256="$zeros"
 
+# rest with pins set: a warning, not a failure, listing every pin ignored.
+expect_rest_pins_warning() {
+    local out status=0
+    out="$(as_root env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+        FLAVOR=rest VERSION="$version" CLI_KEYCLOAK_SHA256="$zeros" PINS_FILE="$version_pins" \
+        bash "$install_sh" 2>&1)" || status=$?
+    printf '%s\n' "$out"
+    [ "$status" -eq 0 ] \
+        && printf '%s\n' "$out" | grep -Fq "cli-keycloak: warning: the rest flavor downloads nothing, so these pins are ignored: version (feature option), CLI_KEYCLOAK_SHA256 (image environment), CLI_KEYCLOAK_VERSION (pins file ${version_pins})" \
+        && [ "$(sha256sum /usr/local/bin/kcadm)" = "$installed_sha" ] \
+        && _no_official_install
+}
+check "rest with pins set warns that they are ignored, and succeeds" expect_rest_pins_warning
+
 rm -f "$version_pins" "$flavor_pins"
+
+# The official flavor's Java check (kcadm-java.sh), run under install.sh's
+# shell options against fake javas: small scripts that report a version,
+# or fail. No JDK is downloaded.
+java_dir="$(mktemp -d)"
+fake_java() { # <dir> <script body>
+    mkdir -p "$1"
+    printf '#!/bin/sh\n%s\n' "$2" >"$1/java"
+    chmod 0755 "$1/java"
+}
+fake_java "${java_dir}/jdk17/bin" 'echo "Property settings:" >&2; echo "    java.specification.version = 17" >&2; echo "openjdk version \"17.0.9\"" >&2'
+fake_java "${java_dir}/jdk21/bin" 'echo "    java.specification.version = 21" >&2; echo "openjdk version \"21.0.5\"" >&2'
+fake_java "${java_dir}/broken/bin" 'echo "Error: could not create the Java Virtual Machine" >&2; exit 3'
+mkdir -p "${java_dir}/path-broken" "${java_dir}/path-21" "${java_dir}/empty-home"
+ln -s "${java_dir}/broken/bin/java" "${java_dir}/path-broken/java"
+ln -s "${java_dir}/jdk21/bin/java" "${java_dir}/path-21/java"
+base_path=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# java_check <install_jre> [VAR=value...]: runs check_kcadm_java in a
+# clean environment under set -euo pipefail, called plainly (not in an if
+# or ||, so errexit applies inside it), and prints its output, then
+# "status=<n>". "reached-end" is printed only if it returned 0 without
+# aborting the shell.
+cat >"${java_dir}/run-check.sh" <<'EOF'
+set -euo pipefail
+. "$1"
+check_kcadm_java "$2" 21
+echo reached-end
+EOF
+java_check() {
+    local install_jre="$1"
+    shift
+    env -i "$@" bash "${java_dir}/run-check.sh" "${feature_dir}/kcadm-java.sh" "$install_jre" 2>&1 \
+        || echo "status=$?"
+}
+
+# expect_java <install_jre> <reached-end|status=1> <fixed string> [VAR=value...]
+expect_java() {
+    local install_jre="$1" outcome="$2" want="$3" out
+    shift 3
+    out="$(java_check "$install_jre" "$@")"
+    printf '%s\n' "$out"
+    printf '%s\n' "$out" | grep -Fxq -- "$outcome" \
+        && printf '%s\n' "$out" | grep -Fq -- "$want"
+}
+
+check "JAVA_HOME with Java 17, install_jre false: warns and succeeds" expect_java false reached-end \
+    "cli-keycloak: warning: ${java_dir}/jdk17/bin/java is Java 17; kcadm needs Java 21 or newer at run time (install_jre is false)" \
+    PATH="$base_path" JAVA_HOME="${java_dir}/jdk17"
+check "JAVA_HOME with Java 17, install_jre true: fails" expect_java true status=1 \
+    "cli-keycloak: ${java_dir}/jdk17/bin/java is Java 17; kcadm needs Java 21 or newer" \
+    PATH="$base_path" JAVA_HOME="${java_dir}/jdk17"
+check "JAVA_HOME wins over java on PATH, as in kcadm.sh" expect_java false reached-end \
+    "${java_dir}/jdk17/bin/java is Java 17" \
+    PATH="${java_dir}/path-21:${base_path}" JAVA_HOME="${java_dir}/jdk17"
+check "JAVA wins over JAVA_HOME, as in kcadm.sh" expect_java true reached-end \
+    "cli-keycloak: kcadm will run ${java_dir}/jdk21/bin/java (Java 21)" \
+    PATH="$base_path" JAVA="${java_dir}/jdk21/bin/java" JAVA_HOME="${java_dir}/jdk17"
+check "java 21 on PATH passes, named by its resolved path" expect_java true reached-end \
+    "cli-keycloak: kcadm will run ${java_dir}/jdk21/bin/java (Java 21)" \
+    PATH="${java_dir}/path-21:${base_path}"
+check "a failing java on PATH, install_jre false: warns, no abort" expect_java false reached-end \
+    "cli-keycloak: warning: ${java_dir}/broken/bin/java reports no Java version (it failed or printed none)" \
+    PATH="${java_dir}/path-broken:${base_path}"
+check "a failing java on PATH, install_jre true: fails with a message" expect_java true status=1 \
+    "cli-keycloak: ${java_dir}/broken/bin/java reports no Java version (it failed or printed none); kcadm needs Java 21 or newer" \
+    PATH="${java_dir}/path-broken:${base_path}"
+check "JAVA_HOME without bin/java is named" expect_java false reached-end \
+    "no executable java at ${java_dir}/empty-home/bin/java" \
+    PATH="$base_path" JAVA_HOME="${java_dir}/empty-home"
+check "no java at all, install_jre false: warns" expect_java false reached-end \
+    "warning: no java found (JAVA and JAVA_HOME unset, no java on PATH)" \
+    PATH="$base_path"
+
+rm -rf "$java_dir"
 
 reportResults
