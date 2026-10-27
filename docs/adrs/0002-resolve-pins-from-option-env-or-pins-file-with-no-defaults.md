@@ -2,7 +2,10 @@
 
 ## Status
 
-Accepted
+Accepted. Partly superseded by
+[0003](0003-pin-apt-installed-clis-by-upstream-version-with-a-verified-repo-key.md):
+apt-installed CLIs pin a version only, and 0003 states exactly when a
+channel counts as set.
 
 ## Context
 
