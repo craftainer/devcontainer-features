@@ -48,6 +48,18 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
 
+  # This instance's own hooks: the features' shell code.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: shellcheck (features, install-lib, check scripts)
+        # install-lib.sh declares its shell (bash) with a directive;
+        # --external-sources lets install.sh follow its sourced copy.
+        args: [--external-sources, --source-path=SCRIPTDIR]
+        files: ^(src/.*|common/[^/]*|scripts/check-[^/]*)\.sh$
+        stages: [pre-commit, manual]
+
   - repo: local
     hooks:
       - id: template-sync-manifest
@@ -72,4 +84,22 @@ repos:
         language: system
         files: ^\.devcontainer/devcontainer(-lock)?\.json$
         pass_filenames: false
+        stages: [pre-commit, manual]
+
+      # This instance's own local hooks (see
+      # docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md).
+      - id: install-lib-drift
+        name: install-lib-drift (src/*/install-lib.sh match common/)
+        entry: scripts/check-install-lib-drift.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit, manual]
+
+      - id: version-bump
+        name: version-bump (changed features raise their version vs origin/main)
+        entry: scripts/check-version-bump.sh
+        language: system
+        pass_filenames: false
+        always_run: true
         stages: [pre-commit, manual]
