@@ -16,7 +16,8 @@ ignore:
   # (see docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md).
   - .github/workflows/features.yml
 
-  # The local prek hooks' scripts (install-lib copy drift, version bump);
+  # The local prek hooks' scripts (install-lib copy drift, feature options,
+  # version bump);
   # wired up in .pre-commit-config.yaml, which is merge tier, so sync keeps
   # those hook entries.
   - scripts/check-*.sh

@@ -73,6 +73,15 @@ before `install.sh` runs. An empty `VERSION` therefore always replaces a
 `VERSION` inherited from the base image's `ENV` or exported by an earlier
 feature, which would otherwise be taken as the option. For the same
 reason, `install.sh` reads `/etc/os-release` only in a subshell.
+`ssl-ca`'s `certs`, `urls` and `sha256s` follow the same rule, since it
+resolves them the same way.
+
+The rule is enforced by a prek hook, `scripts/check-feature-options.sh`.
+In every feature whose `install.sh` sources `install-lib.sh`, each of
+`version`, `sha256`, `sha256_amd64`, `sha256_arm64`, `pins_file`,
+`certs`, `urls` and `sha256s` that it declares must have
+`"default": ""`. A feature that declares `version` must also declare
+`pins_file`.
 
 **Version and sha come from the same channel.** "The first non-empty value
 wins" is applied to the pair, not to each variable on its own. A channel
@@ -84,6 +93,19 @@ worse, pass for an artifact neither party meant.
 
 **The check always runs:** `echo "<sha>  <file>" | sha256sum -c -`. A
 mismatch deletes the download and fails the install.
+
+**Downloads retry, with a bounded connect time.** `il_fetch_verified`
+runs `curl -fsSL --connect-timeout 10 --retry 3 --retry-max-time 60
+--retry-connrefused`. curl itself retries timeouts, `ECONNREFUSED` and
+HTTP 408/429/5xx. It doesn't retry other connect errors such as
+`EHOSTUNREACH` or `ENETUNREACH`, so the library retries DNS and connect
+failures (curl exit 6/7), resets and truncated transfers (18/52/55/56) up
+to 4 calls, as base's `scripts/develop.sh` does. That makes at most 16
+attempts, each with a connection phase (DNS, TCP and TLS) of at most 10s,
+so failing to connect costs at most about 200s with the backoff sleeps.
+A transfer that stalls after connecting is not bounded. There is no
+`--max-time`, because artifact sizes vary and a hard total cap would
+need its own decision.
 
 **Naming rule, no exceptions.** `<ID>` is the feature id upper-cased with
 `-` turned into `_` (`cli-keycloak` gives `CLI_KEYCLOAK`). Every variable a

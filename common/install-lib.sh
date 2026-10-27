@@ -17,7 +17,8 @@
 # message to stderr and exits 1, so install.sh fails at the right step.
 #
 # Every feature that calls il_resolve_pin must declare its "version", sha
-# options and "pins_file" options with "default": "" (see il_resolve_pin).
+# options and "pins_file" options with "default": "" (see il_resolve_pin);
+# scripts/check-feature-options.sh enforces it.
 
 # Prints "install-lib: <message>" to stderr and exits 1.
 _il_die() {
@@ -218,23 +219,29 @@ il_fetch_verified() {
     if ! command -v curl >/dev/null 2>&1; then
         il_apt_install curl ca-certificates
     fi
-    # curl's own --retry 3 (+ --retry-connrefused) covers timeouts, refused
-    # connections (exit 7) and HTTP 408/429/5xx. DNS failures (exit 6),
-    # resets and truncated transfers (18/52/55/56) are also retried here, as
-    # in scripts/develop.sh's fetch. Worst case: 4 curl calls of up to 4
-    # attempts each (16), plus 12s of sleeps here; --retry-max-time 60 stops
-    # each call starting new retries after 60s, but an attempt itself has no
-    # time limit, so a stalled transfer runs until the job's timeout. A
-    # permanent HTTP error (-f, exit 22) or a TLS failure still fails at
-    # once.
+    # Two retry layers. curl's own --retry 3 covers timeouts (exit 28,
+    # including the connect timeout) and HTTP 408/429/5xx; with
+    # --retry-connrefused also ECONNREFUSED, but not other connect errors
+    # such as EHOSTUNREACH or ENETUNREACH. This loop retries what curl
+    # gives up on: DNS and connect failures (exit 6/7), resets and truncated
+    # transfers (18/52/55/56), as scripts/develop.sh's fetch does.
+    # Worst case: 4 curl calls of up to 4 attempts each, 16 attempts in
+    # all. --connect-timeout 10 bounds each attempt's connection phase (DNS,
+    # TCP and TLS) to 10s, so failing to connect costs at most about 200s
+    # (16 x 10s, plus curl's 7s of backoff per call and 12s of sleeps here).
+    # A transfer that stalls after connecting is not bounded: there is no
+    # --max-time, because artifact sizes vary, so it runs until the job's
+    # timeout. --retry-max-time 60 only stops a call starting new retries
+    # after 60s. A permanent HTTP error (-f, exit 22) or a TLS certificate
+    # failure still fails at once.
     local attempt=1 status
     while :; do
         status=0
-        curl -fsSL --retry 3 --retry-max-time 60 --retry-connrefused \
-            -o "$dest" "$url" || status=$?
+        curl -fsSL --connect-timeout 10 --retry 3 --retry-max-time 60 \
+            --retry-connrefused -o "$dest" "$url" || status=$?
         case "$status" in
             0) break ;;
-            6 | 18 | 52 | 55 | 56)
+            6 | 7 | 18 | 52 | 55 | 56)
                 if [ "$attempt" -lt 4 ]; then
                     echo "install-lib: curl exit ${status}; retrying (${attempt}/3): ${url}" >&2
                     sleep $((attempt * 2))
