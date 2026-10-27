@@ -65,7 +65,8 @@ workflow is never run here.
   `origin/main`; until it lands, reviewers check it.
 - The features share `common/install-lib.sh`, but a feature folder is
   packaged on its own, so each `src/<id>/` carries a verbatim copy of it.
-  A prek hook is to fail when a copy drifts.
+  A prek hook is to fail when a copy drifts; until it lands, reviewers
+  check it.
 - `features.yml`, `src/`, `test/` and `common/` are instance-owned and
   listed in `.github/template-sync-manifest.local.yml`, so template sync
   never touches them. Base's release tooling still syncs in, unused.

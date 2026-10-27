@@ -1,8 +1,9 @@
 # This instance's own paths, which template-base's manifest
 # (template-sync-manifest.yml) can't know about. "ignore" tier only, in the
 # same pattern syntax. Only the completeness check
-# (.github/scripts/template_sync_manifest.py) reads this file; template sync touches
-# only paths the base manifest classifies, so it leaves these alone.
+# (.github/scripts/template_sync_manifest.py) reads this file; template
+# sync touches only paths the base manifest classifies, so it leaves these
+# alone.
 
 ignore:
   # The features themselves, their tests, and the shared install library
