@@ -83,8 +83,8 @@ way.
 
 **The pins file is parsed, never sourced.** Only `KEY=value` lines are
 read (optionally prefixed with `export `), blank lines and `#` comments are
-skipped, one pair of surrounding quotes is stripped, and nothing is
-expanded. Only the feature's own `<ID>_*` keys are looked up, so one file
+skipped, a trailing ` # comment` and trailing blanks are dropped, one pair
+of surrounding quotes is stripped, and nothing is expanded. Only the feature's own `<ID>_*` keys are looked up, so one file
 can hold the pins of every feature. A repeated key takes its last value.
 Versions must match `[A-Za-z0-9][A-Za-z0-9._+~-]*` and shas must be 64 hex
 digits, because both end up in URLs and file names.
@@ -118,7 +118,9 @@ version carries a `"//renovate"` key whose value is
 ` extractVersion=<regex>`. The key sits at the scenario's top level, never
 inside a feature's options, and comes before the `"version"` it tracks,
 with no closing `}` between them. In practice it is the scenario's first
-key, and a scenario pins at most one versioned feature this way:
+key, and a scenario pins at most one versioned feature this way. The
+regex reads the raw JSON text, so `extractVersion` must not contain a
+backslash or a quote (`^v(?<version>.*)$` needs neither):
 
 ```json
 {

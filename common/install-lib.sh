@@ -61,10 +61,12 @@ il_apt_install() {
 # Prints the value of <key> from the pins file <file>, or nothing.
 #
 # The file is parsed, never sourced: only lines of the form KEY=value are
-# read, after optional leading blanks and an optional "export ". Blank lines
-# and lines starting with # are skipped. One pair of matching surrounding
-# quotes ('...' or "...") is stripped; nothing is expanded. If a key
-# appears more than once the last line wins, as it would when sourced.
+# read, after optional leading blanks and an optional "export" plus blanks.
+# Blank lines and lines starting with # are skipped. A trailing comment
+# (blanks, then #) and trailing blanks are dropped, then one pair of
+# matching surrounding quotes ('...' or "...") is stripped; nothing is
+# expanded, and a value can't contain " #". If a key appears more than
+# once the last line wins, as it would when sourced.
 _il_pins_get() {
     local file="$1" key="$2" line k v found=""
     while IFS= read -r line || [ -n "$line" ]; do
@@ -73,11 +75,18 @@ _il_pins_get() {
         case "$line" in
             '' | '#'*) continue ;;
         esac
-        line="${line#export }"
+        case "$line" in
+            export[[:blank:]]*)
+                line="${line#export}"
+                line="${line#"${line%%[![:blank:]]*}"}"
+                ;;
+        esac
         k="${line%%=*}"
         [ "$k" = "$key" ] || continue
         [ "$k" != "$line" ] || continue # no "=" on this line
         v="${line#*=}"
+        v="${v%%[[:blank:]]#*}"
+        v="${v%"${v##*[![:blank:]]}"}"
         case "$v" in
             \"*\") v="${v#\"}" v="${v%\"}" ;;
             \'*\') v="${v#\'}" v="${v%\'}" ;;
@@ -103,6 +112,11 @@ _il_pins_get() {
 # Version and sha always come from the same channel. A channel that sets
 # one without the other is an error, never completed from a later channel.
 # No channel at all is an error naming all three. There are no defaults.
+#
+# $VERSION is the generic name the "version" option arrives under, so
+# install.sh must not set it before this call: read /etc/os-release in a
+# subshell, e.g. codename="$(. /etc/os-release && echo "$VERSION_CODENAME")",
+# never by sourcing it into install.sh's own shell.
 il_resolve_pin() {
     local id="${1:-}" arch_specific="${2:-}" arch sha_opt
     case "$id" in
@@ -186,10 +200,30 @@ il_fetch_verified() {
     if ! command -v curl >/dev/null 2>&1; then
         il_apt_install curl ca-certificates
     fi
-    if ! curl -fsSL --retry 3 -o "$dest" "$url"; then
+    # curl's --retry (+ --retry-connrefused) covers timeouts, refused
+    # connections and HTTP 408/429/5xx. DNS and connect failures (exit 6/7),
+    # resets and truncated transfers (18/52/55/56) are retried here, at most
+    # 4 tries, as in scripts/develop.sh's fetch; a permanent HTTP error (-f,
+    # exit 22) or a TLS failure still fails at once.
+    local attempt=1 status
+    while :; do
+        status=0
+        curl -fsSL --retry 3 --retry-max-time 60 --retry-connrefused \
+            -o "$dest" "$url" || status=$?
+        case "$status" in
+            0) break ;;
+            6 | 7 | 18 | 52 | 55 | 56)
+                if [ "$attempt" -lt 4 ]; then
+                    echo "install-lib: curl exit ${status}; retrying (${attempt}/3): ${url}" >&2
+                    sleep $((attempt * 2))
+                    attempt=$((attempt + 1))
+                    continue
+                fi
+                ;;
+        esac
         rm -f "$dest"
-        _il_die "download failed: ${url}"
-    fi
+        _il_die "download failed (curl exit ${status}): ${url}"
+    done
     if ! echo "${sha}  ${dest}" | sha256sum -c -; then
         rm -f "$dest"
         _il_die "sha256 mismatch for ${url} (expected ${sha}); deleted ${dest}"
@@ -237,6 +271,11 @@ il_user_state_dir() {
                 chown "${user}:${group}" "$dir" || _il_die "il_user_state_dir: cannot chown ${dir}"
             fi
         done
+        # chown and chmod follow symlinks, so a symlinked state dir would
+        # hand its target to the user; refuse it instead.
+        if [ -L "$dir" ]; then
+            _il_die "il_user_state_dir: ${dir} is a symlink; refusing to change its target"
+        fi
         chown "${user}:${group}" "$dir" || _il_die "il_user_state_dir: cannot chown ${dir}"
         chmod 0700 "$dir" || _il_die "il_user_state_dir: cannot chmod ${dir}"
     done

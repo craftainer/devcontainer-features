@@ -82,7 +82,7 @@
         "/^test/.+\\.env$/"
       ],
       "matchStrings": [
-        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n(?:ENV )?[A-Z0-9_]+_VERSION=(?<currentValue>\\S+)"
+        "# renovate: datasource=(?<datasource>\\S+) depName=(?<depName>\\S+)(?: extractVersion=(?<extractVersion>\\S+))?\\s*\\n(?:ENV |export )?[A-Z0-9_]+_VERSION=[\"']?(?<currentValue>[^\\s\"'#]+)"
       ]
     },
     {
