@@ -294,7 +294,11 @@ job grants `packages: write`; until then GHCR denies the push and
 `make publish` fails. `OCI_IMAGE_NAME` is optional and defaults to
 `craftainer/devcontainer-features`. The `OCI_REGISTRY_USERNAME` and
 `OCI_REGISTRY_PASSWORD` secrets, when set, take precedence (both are then
-required), and are needed for any registry other than `ghcr.io`. Without
+required), and are needed for any registry other than `ghcr.io`; to move
+`ghcr.io` from them to `GITHUB_TOKEN`, delete both. A feature package that
+already exists on GHCR and wasn't first pushed by this repository's
+workflow needs, once, this repository given the Write role under the
+package's "Manage Actions access" settings, or GHCR denies the push. Without
 `OCI_REGISTRY`, a full release publishes nothing and warns.
 
 To try the targets locally: `make build release-assets release-check`;

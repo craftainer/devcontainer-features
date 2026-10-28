@@ -214,7 +214,7 @@ cmd_check() {
 }
 
 cmd_publish() {
-    local version namespace registry_user registry_token auth_source
+    local version namespace registry_user registry_token auth_source denied_hint=""
     version="${RELEASE_VERSION:-${RELEASE_TAG:-}}"
     version="${version#v}"
 
@@ -236,8 +236,8 @@ cmd_publish() {
 
     # Explicit secrets win; on ghcr.io without them, the job's GITHUB_TOKEN.
     if [ -n "${OCI_REGISTRY_USERNAME:-}" ] || [ -n "${OCI_REGISTRY_PASSWORD:-}" ]; then
-        [ -n "${OCI_REGISTRY_USERNAME:-}" ] || die "OCI_REGISTRY is set but the OCI_REGISTRY_USERNAME secret is empty"
-        [ -n "${OCI_REGISTRY_PASSWORD:-}" ] || die "OCI_REGISTRY is set but the OCI_REGISTRY_PASSWORD secret is empty"
+        [ -n "${OCI_REGISTRY_USERNAME:-}" ] || die "the OCI_REGISTRY_PASSWORD secret is set but OCI_REGISTRY_USERNAME is empty; set both, or (on ghcr.io) delete both to publish with GITHUB_TOKEN"
+        [ -n "${OCI_REGISTRY_PASSWORD:-}" ] || die "the OCI_REGISTRY_USERNAME secret is set but OCI_REGISTRY_PASSWORD is empty; set both, or (on ghcr.io) delete both to publish with GITHUB_TOKEN"
         registry_user="$OCI_REGISTRY_USERNAME" registry_token="$OCI_REGISTRY_PASSWORD"
         auth_source="the OCI_REGISTRY_USERNAME/OCI_REGISTRY_PASSWORD secrets"
     elif [ "$OCI_REGISTRY" = ghcr.io ]; then
@@ -245,6 +245,9 @@ cmd_publish() {
         [ -n "${GITHUB_ACTOR:-}" ] || die "OCI_REGISTRY is ghcr.io and publish would use GITHUB_TOKEN, but GITHUB_ACTOR is not set"
         registry_user="$GITHUB_ACTOR" registry_token="$GITHUB_TOKEN"
         auth_source="GITHUB_TOKEN as ${GITHUB_ACTOR} (needs packages: write on release.yml's build job)"
+        # In CI GITHUB_TOKEN is always set, so a missing `packages: write`
+        # only shows up as the registry denying the push.
+        denied_hint="; if the registry denied the push, release.yml's build job needs \`permissions: packages: write\` (template-sync it from the template-base release that adds it), and each feature package that already exists needs this repository given Write in its \"Manage Actions access\" settings"
     else
         die "OCI_REGISTRY is ${OCI_REGISTRY}, not ghcr.io, so the OCI_REGISTRY_USERNAME and OCI_REGISTRY_PASSWORD secrets are required; both are empty"
     fi
@@ -271,7 +274,8 @@ cmd_publish() {
     # credential the CLI sees is the one chosen above, in DEVCONTAINERS_OCI_AUTH.
     DEVCONTAINERS_OCI_AUTH="${OCI_REGISTRY}|${registry_user}|${registry_token}" \
         env -u GITHUB_TOKEN -u OCI_REGISTRY_PASSWORD \
-        "$DEVCONTAINER" features publish src --registry "$OCI_REGISTRY" --namespace "$namespace" --log-level info
+        "$DEVCONTAINER" features publish src --registry "$OCI_REGISTRY" --namespace "$namespace" --log-level info ||
+        die "devcontainer features publish failed, authenticating with ${auth_source}${denied_hint}"
 }
 
 case "${1:-}" in
