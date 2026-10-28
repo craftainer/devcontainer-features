@@ -245,3 +245,7 @@ Debian and Ubuntu, on amd64 and arm64. `official` needs `tar`, installs
 `curl` and `ca-certificates` if `curl` is missing, and installs
 `default-jre-headless` unless `install_jre` is `false`. `rest` installs
 `curl`, `ca-certificates` and `python3` if they are missing.
+
+## License
+
+Keycloak is Apache-2.0 ([LICENSE.txt](https://github.com/keycloak/keycloak/blob/main/LICENSE.txt)). `official` installs the notice from the release tarball as `/usr/local/share/doc/keycloak-cli/LICENSE.txt`; the client libraries carry their own notices inside their jars. `rest` is this collection's own script, under its GPL-3.0 license.

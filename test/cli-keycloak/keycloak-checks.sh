@@ -249,3 +249,13 @@ expect_rest() {
     check "the feature declares no mounts" _feature_declares_no_mounts
     rm -rf "$test_tmp"
 }
+
+_license_notice_ok() {
+    [ "$(stat -c '%a %u' "$1")" = "644 0" ] && grep -qF "$2" "$1"
+}
+
+# expect_license_notice <file> <text>: <file> is a root-owned, mode 0644
+# license notice that contains <text>.
+expect_license_notice() {
+    check "license notice $1 is mode 0644, owned by root, and has '$2'" _license_notice_ok "$1" "$2"
+}

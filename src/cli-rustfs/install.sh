@@ -39,6 +39,21 @@ apt-get install -y --no-install-recommends "${tmp}/${asset}" || {
 }
 rm -rf /var/lib/apt/lists/*
 
+# The package ships its notices (dual MIT / Apache-2.0) as
+# /usr/share/doc/rustfs-cli/LICENSE-*, which images that exclude
+# /usr/share/doc from dpkg (ubuntu:24.04 keeps only */copyright there)
+# never get. So copy them, from the same verified .deb, to
+# /usr/local/share/doc/rustfs-cli/ as well. A release without them installs
+# anyway.
+dpkg-deb -x "${tmp}/${asset}" "${tmp}/deb"
+notices=("${tmp}/deb/usr/share/doc/rustfs-cli/"LICENSE*)
+if [ -f "${notices[0]}" ]; then
+    install -d -m 0755 /usr/local/share/doc/rustfs-cli
+    install -m 0644 "${notices[@]}" /usr/local/share/doc/rustfs-cli/
+else
+    echo "cli-rustfs: warning: ${asset} has no /usr/share/doc/rustfs-cli/LICENSE*; no license notice installed" >&2
+fi
+
 installed="$(dpkg-query -W -f='${Version}' rustfs-cli)"
 if [ "$installed" != "$IL_VERSION" ]; then
     echo "cli-rustfs: rustfs-cli ${installed} is installed, expected ${IL_VERSION}" >&2

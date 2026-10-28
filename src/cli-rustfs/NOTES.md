@@ -162,3 +162,7 @@ and `apt-get install` for the downloaded `.deb`, and installs `curl` and
 shell), which installs a file at the same path, so on an image that has
 that package installed this feature's install fails. Remove the `rc`
 shell from the image first if you need RustFS's `rc`.
+
+## License
+
+rc is dual-licensed MIT or Apache-2.0 ([LICENSE-MIT](https://github.com/rustfs/cli/blob/main/LICENSE-MIT), [LICENSE-APACHE](https://github.com/rustfs/cli/blob/main/LICENSE-APACHE)); the feature installs both notices from the `.deb` as `/usr/local/share/doc/rustfs-cli/LICENSE-MIT` and `LICENSE-APACHE`, alongside the package's own `/usr/share/doc/rustfs-cli/` copies (which images such as `ubuntu:24.04` drop).

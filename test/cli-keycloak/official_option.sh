@@ -9,5 +9,6 @@ source dev-container-features-test-lib
 source "$(dirname "$0")/keycloak-checks.sh"
 
 expect_official "$(scenario_version official_option)"
+expect_license_notice /usr/local/share/doc/keycloak-cli/LICENSE.txt "Apache License"
 
 reportResults
