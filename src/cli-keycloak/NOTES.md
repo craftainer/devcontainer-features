@@ -21,7 +21,8 @@ kcadm GET /admin/realms/master/users
 `official` puts `kcadm.sh` and its client jars in
 `/usr/local/lib/keycloak-cli`, with `kcadm` and `kcadm.sh` on `PATH`.
 `rest` installs only `/usr/local/bin/kcadm`; it downloads nothing, so it
-needs no version or sha256 and ignores them if they are set.
+needs no version or sha256. If one is set anyway (in any of the three
+places below), the install warns that it is ignored and goes on.
 
 The flavor comes from the first of these that sets it: the `flavor`
 option, `CLI_KEYCLOAK_FLAVOR` in the image environment, or
@@ -133,35 +134,57 @@ path in the image:
 `kcadm.sh` runs on the JVM, and Keycloak 26 needs Java 21 or newer. With
 `install_jre` on (the default), the feature installs the distro's
 `default-jre-headless`, which is OpenJDK 21 on Debian 13 and Ubuntu
-24.04, and fails if the result is older than 21.
+24.04.
+
+After installing, the feature checks the java that `kcadm.sh` will run,
+picked the way `kcadm.sh` picks it: `$JAVA` if set, else
+`$JAVA_HOME/bin/java` if `JAVA_HOME` is set, else `java` on `PATH`. So a
+`JAVA_HOME` in your image pointing at an older JDK takes precedence over
+the JRE just installed. With `install_jre` on, a missing java, or one
+older than 21, fails the install, naming the java it found.
 
 Set `install_jre` to `false` if your image already has Java, for example
-from the official `java` feature. kcadm is then installed without
-checking for Java. **Java 21 or newer must still be on `PATH` (or in
-`JAVA_HOME`) when you run kcadm**; the install prints a note if none is
-there yet, and a warning if it finds an older one. `install_jre` is
-ignored for `rest`.
+from the official `java` feature. The same check then only warns, and
+the install succeeds either way. **Java 21 or newer must still be
+reachable that way when you run kcadm.** `install_jre` is ignored for
+`rest`.
 
 ## The `rest` wrapper
 
-`kcadm METHOD PATH [JSON]` fetches an admin token for the `admin-cli`
-client in the `master` realm, sends one request to `$KEYCLOAK_URL$PATH`
-with it, and pretty-prints the JSON reply. It reads at run time:
+`kcadm METHOD PATH [JSON]` logs in as the admin (password grant, the
+`admin-cli` client, the `master` realm), sends one request to
+`$KEYCLOAK_URL$PATH` with the token, and prints the reply: pretty-printed
+if it is JSON, as it is otherwise. It reads at run time:
 
 | Variable | Meaning |
 | --- | --- |
-| `KEYCLOAK_URL` | the server's base URL; default `http://keycloak:8080` |
-| `KEYCLOAK_ADMIN` | the admin user name (required) |
-| `KEYCLOAK_ADMIN_PASSWORD` | its password (required) |
+| `KEYCLOAK_URL` | the server's base URL, e.g. `http://keycloak:8080` |
+| `KEYCLOAK_ADMIN` | the admin user name |
+| `KEYCLOAK_ADMIN_PASSWORD` | its password |
+
+All three are required. If one is unset or empty, kcadm names it and
+exits 1.
 
 ```sh
 kcadm GET /admin/realms
 kcadm POST /admin/realms/myrealm/users '{"username": "alice", "enabled": true}'
 ```
 
-It exits non-zero on a failed login or an HTTP error. curl runs with
-`-sf`, so the HTTP status and body of an error aren't shown. It is the craftainer app templates' `develop.d` wrapper,
-ported as it is, so its usage example names `template-fastapi`'s realm.
+- The login form is URL-encoded, so any password works.
+- The password, the token and the JSON body reach curl through stdin or a
+  header file in a private temporary directory, never as arguments, so
+  `ps` doesn't show them.
+- The body is sent byte for byte; a leading `@` is not read as a file.
+- A failed login prints `kcadm: login failed: HTTP <code>` and the
+  server's reply. Any other reply outside 2xx prints
+  `kcadm: METHOD PATH: HTTP <code>` and the reply body, all on stderr,
+  and exits 1. A connection failure shows curl's error and exits 1.
+
+It is ported from the craftainer app templates' `develop.d` wrapper
+(`template-fastapi`'s `scripts/develop.d/40-kcadm.sh`), with the same
+arguments and variables. The differences: `KEYCLOAK_URL` no longer
+defaults to `http://keycloak:8080`, and errors are reported as above
+instead of exiting silently.
 
 ## Install order with `ssl-ca`
 

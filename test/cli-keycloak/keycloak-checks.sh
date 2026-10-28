@@ -80,7 +80,7 @@ expect_official() {
         check "kcadm.sh --help runs under the JRE" _runs_help kcadm.sh
         check "kcadm --help runs under the JRE" _runs_help kcadm
     else
-        check "no Java is installed" _no_java
+        check "no java on PATH and no default-jre-headless" _no_java
     fi
     check "the feature declares no mounts" _feature_declares_no_mounts
 }
@@ -107,13 +107,18 @@ _no_official_install() {
     [ ! -e "$lib_dir" ] && [ ! -e /usr/local/bin/kcadm.sh ]
 }
 
+# The mock's admin password: every character that needs URL-encoding in a
+# form body, plus a space.
+mock_password='p+&%@ x'
+
 # _with_mock <command...>: runs <command> with a mock Keycloak
-# (mock_keycloak.py, admin user "admin", password "s3cret") listening on
-# 127.0.0.1 and KEYCLOAK_URL pointing at it, then stops the mock.
+# (mock_keycloak.py, admin user "admin", password $mock_password) on
+# 127.0.0.1, KEYCLOAK_URL pointing at it and KEYCLOAK_ADMIN and
+# KEYCLOAK_ADMIN_PASSWORD set to match, then stops the mock.
 _with_mock() {
     local dir pid status=0 _
     dir="$(mktemp -d)" || return 1
-    python3 -I "${test_dir}/mock_keycloak.py" "${dir}/port" admin s3cret &
+    python3 -I "${test_dir}/mock_keycloak.py" "${dir}/port" admin "$mock_password" &
     pid=$!
     for _ in $(seq 1 50); do
         [ -s "${dir}/port" ] && break
@@ -125,39 +130,122 @@ _with_mock() {
         rm -rf "$dir"
         return 1
     fi
-    KEYCLOAK_URL="http://127.0.0.1:$(cat "${dir}/port")" "$@" || status=$?
+    KEYCLOAK_URL="http://127.0.0.1:$(cat "${dir}/port")" KEYCLOAK_ADMIN=admin \
+        KEYCLOAK_ADMIN_PASSWORD="$mock_password" "$@" || status=$?
     kill "$pid" 2>/dev/null || true
     wait "$pid" 2>/dev/null || true
     rm -rf "$dir"
     return "$status"
 }
 
+# run_kcadm <args...>: runs kcadm and sets kc_out, kc_err and kc_status,
+# printing all three for the log.
+run_kcadm() {
+    local errf
+    errf="$(mktemp)" || return 1
+    kc_status=0
+    kc_out="$(kcadm "$@" 2>"$errf")" || kc_status=$?
+    kc_err="$(cat "$errf")"
+    rm -f "$errf"
+    printf 'exit %s\n--- stdout\n%s\n--- stderr\n%s\n' "$kc_status" "$kc_out" "$kc_err"
+}
+
+_has() { # <haystack> <fixed string>
+    printf '%s\n' "$1" | grep -Fq -- "$2"
+}
+
+# A password with + & % @ and a space logs in (it is URL-encoded), and the
+# request carries the token and the JSON body.
 _wrapper_round_trip() {
-    local out
-    out="$(KEYCLOAK_ADMIN=admin KEYCLOAK_ADMIN_PASSWORD=s3cret \
-        kcadm POST /admin/realms/demo/users '{"username": "alice"}')" || return 1
-    printf '%s\n' "$out"
-    printf '%s\n' "$out" | grep -q '"method": "POST"' \
-        && printf '%s\n' "$out" | grep -q '"path": "/admin/realms/demo/users"' \
-        && printf '%s\n' "$out" | grep -q '"content_type": "application/json"' \
-        && printf '%s\n' "$out" | grep -q '"username": "alice"'
+    run_kcadm POST /admin/realms/demo/users '{"username": "alice"}'
+    [ "$kc_status" -eq 0 ] \
+        && _has "$kc_out" '"method": "POST"' \
+        && _has "$kc_out" '"path": "/admin/realms/demo/users"' \
+        && _has "$kc_out" '"content_type": "application/json"' \
+        && _has "$kc_out" '"username": "alice"'
 }
 
-_wrapper_bad_login_fails() {
-    ! KEYCLOAK_ADMIN=admin KEYCLOAK_ADMIN_PASSWORD=wrong \
-        kcadm GET /admin/realms >/dev/null 2>&1
+# A body starting with @ is sent as it is, never read as a file.
+_wrapper_body_literal() {
+    run_kcadm POST /admin/realms/demo/users '@/etc/hostname'
+    [ "$kc_status" -eq 0 ] && _has "$kc_out" '"raw_body": "@/etc/hostname"'
 }
 
-# expect_rest: the rest wrapper is /usr/local/bin/kcadm, byte for byte;
-# it prints its usage, talks to a mock Keycloak, and fails a bad login;
-# no tarball or JRE was installed.
+_wrapper_404() {
+    run_kcadm GET /status/404
+    [ "$kc_status" -ne 0 ] && [ -z "$kc_out" ] \
+        && _has "$kc_err" 'kcadm: GET /status/404: HTTP 404' \
+        && _has "$kc_err" '"error": "not found"'
+}
+
+_wrapper_500_raw() {
+    run_kcadm GET /status/500
+    [ "$kc_status" -ne 0 ] && [ -z "$kc_out" ] \
+        && _has "$kc_err" 'kcadm: GET /status/500: HTTP 500' \
+        && _has "$kc_err" 'Internal Server Error: boom'
+}
+
+_wrapper_text_raw() {
+    run_kcadm GET /text
+    [ "$kc_status" -eq 0 ] && [ "$kc_out" = 'plain text reply' ]
+}
+
+_wrapper_bad_login() {
+    KEYCLOAK_ADMIN_PASSWORD=wrong run_kcadm GET /admin/realms
+    [ "$kc_status" -ne 0 ] && [ -z "$kc_out" ] \
+        && _has "$kc_err" 'kcadm: login failed: HTTP 401' \
+        && _has "$kc_err" '"error": "invalid_grant"' \
+        && ! _has "$kc_err" 'Traceback'
+}
+
+# Each required variable, unset, is named, with no "unbound variable".
+_wrapper_names_unset() {
+    local var
+    for var in KEYCLOAK_URL KEYCLOAK_ADMIN KEYCLOAK_ADMIN_PASSWORD; do
+        env KEYCLOAK_URL=http://127.0.0.1:9 KEYCLOAK_ADMIN=admin KEYCLOAK_ADMIN_PASSWORD=x \
+            env -u "$var" kcadm GET /admin/realms >/dev/null 2>"${test_tmp}/err" \
+            && return 1
+        cat "${test_tmp}/err"
+        grep -Fq "kcadm: set ${var} " "${test_tmp}/err" || return 1
+        ! grep -q 'unbound variable' "${test_tmp}/err" || return 1
+    done
+}
+
+# Neither the password nor the token is in curl's arguments (what ps
+# shows): a curl shim first on PATH logs every argument, then runs curl.
+_wrapper_secrets_not_in_argv() {
+    local shim="${test_tmp}/shim" real
+    real="$(command -v curl)"
+    mkdir -p "$shim"
+    printf '#!/bin/sh\nprintf "%%s\\n" "$@" >>"%s"\nexec "%s" "$@"\n' "${test_tmp}/argv" "$real" >"${shim}/curl"
+    chmod 0755 "${shim}/curl"
+    : >"${test_tmp}/argv"
+    PATH="${shim}:${PATH}" run_kcadm POST /admin/realms/demo/users '{"username": "alice"}'
+    [ "$kc_status" -eq 0 ] \
+        && [ "$(grep -c . "${test_tmp}/argv")" -gt 0 ] \
+        && ! grep -Fq -- "$mock_password" "${test_tmp}/argv" \
+        && ! grep -Fq -- 'mock-token-123' "${test_tmp}/argv" \
+        && ! grep -Fq -- 'alice' "${test_tmp}/argv"
+}
+
+# expect_rest: the rest wrapper is /usr/local/bin/kcadm (the feature's
+# kcadm-rest.sh); it prints its usage, names unset variables, and behaves
+# against a mock Keycloak; no tarball or JRE was installed.
 expect_rest() {
+    test_tmp="$(mktemp -d)"
     check "kcadm is the rest wrapper, root-owned, mode 0755" _is_wrapper
     check "kcadm with too few arguments prints its usage and exits 1" _wrapper_usage
+    check "kcadm names an unset KEYCLOAK_* variable" _wrapper_names_unset
     check "curl and python3 are installed" _has_curl_python
-    check "kcadm gets a token and sends the request with it" _with_mock _wrapper_round_trip
-    check "kcadm fails on a bad login" _with_mock _wrapper_bad_login_fails
+    check "a password with + & % @ and a space logs in; the request is sent" _with_mock _wrapper_round_trip
+    check "a body starting with @ is sent literally" _with_mock _wrapper_body_literal
+    check "a 404 exits non-zero with the body on stderr" _with_mock _wrapper_404
+    check "a non-JSON 500 prints the raw body on stderr and exits non-zero" _with_mock _wrapper_500_raw
+    check "a non-JSON 200 is printed as it is" _with_mock _wrapper_text_raw
+    check "a bad login says so, without a traceback" _with_mock _wrapper_bad_login
+    check "the password, token and body are not in curl's arguments" _with_mock _wrapper_secrets_not_in_argv
     check "no Keycloak tarball was installed" _no_official_install
     check "no Java is installed" _no_java
     check "the feature declares no mounts" _feature_declares_no_mounts
+    rm -rf "$test_tmp"
 }

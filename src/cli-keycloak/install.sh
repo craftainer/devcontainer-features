@@ -14,6 +14,8 @@
 set -euo pipefail
 # shellcheck source=install-lib.sh
 . "$(dirname "$0")/install-lib.sh"
+# shellcheck source=kcadm-java.sh
+. "$(dirname "$0")/kcadm-java.sh"
 
 # Keycloak 26 runs on Java 21 or newer.
 min_java=21
@@ -58,6 +60,26 @@ esac
 echo "cli-keycloak: flavor ${flavor} (from ${flavor_from})"
 
 if [ "$flavor" = rest ]; then
+    # rest downloads nothing, so a pin anywhere is ignored; say so, since it
+    # may mean the consumer expected the official flavor.
+    ignored=()
+    [ -z "${VERSION:-}" ] || ignored+=("version (feature option)")
+    [ -z "${SHA256:-}" ] || ignored+=("sha256 (feature option)")
+    [ -z "${CLI_KEYCLOAK_VERSION:-}" ] || ignored+=("CLI_KEYCLOAK_VERSION (image environment)")
+    [ -z "${CLI_KEYCLOAK_SHA256:-}" ] || ignored+=("CLI_KEYCLOAK_SHA256 (image environment)")
+    if [ -f "$pins_file" ] && [ -r "$pins_file" ]; then
+        for key in CLI_KEYCLOAK_VERSION CLI_KEYCLOAK_SHA256; do
+            [ -z "$(_il_pins_get "$pins_file" "$key")" ] || ignored+=("${key} (pins file ${pins_file})")
+        done
+    fi
+    if [ "${#ignored[@]}" -gt 0 ]; then
+        list="${ignored[0]}"
+        for item in "${ignored[@]:1}"; do
+            list+=", ${item}"
+        done
+        echo "cli-keycloak: warning: the rest flavor downloads nothing, so these pins are ignored: ${list}" >&2
+    fi
+
     pkgs=()
     command -v curl >/dev/null 2>&1 || pkgs+=(curl)
     [ -f /etc/ssl/certs/ca-certificates.crt ] || pkgs+=(ca-certificates)
@@ -92,13 +114,15 @@ il_fetch_verified "$url" "$IL_SHA256" "${tmp}/${asset}"
 # client/lib/). It finds them through its own resolved path, so symlinks
 # on PATH work.
 mkdir "${tmp}/stage"
-tar -xzf "${tmp}/${asset}" -C "${tmp}/stage" --no-same-owner --strip-components=2 \
-    "keycloak-${IL_VERSION}/bin/kcadm.sh" "keycloak-${IL_VERSION}/bin/client"
-rm -f "${tmp}/${asset}"
-if [ ! -f "${tmp}/stage/kcadm.sh" ] || [ ! -d "${tmp}/stage/client" ]; then
-    echo "cli-keycloak: ${asset} has no bin/kcadm.sh or bin/client/" >&2
+# tar fails when a named member is missing, so check its status, not just
+# the result.
+if ! tar -xzf "${tmp}/${asset}" -C "${tmp}/stage" --no-same-owner --strip-components=2 \
+    "keycloak-${IL_VERSION}/bin/kcadm.sh" "keycloak-${IL_VERSION}/bin/client" \
+    || [ ! -f "${tmp}/stage/kcadm.sh" ] || [ ! -d "${tmp}/stage/client" ]; then
+    echo "cli-keycloak: ${asset}: extraction failed or the tarball lacks bin/kcadm.sh / bin/client/" >&2
     exit 1
 fi
+rm -f "${tmp}/${asset}"
 chmod -R u=rwX,go=rX "${tmp}/stage"
 chmod 0755 "${tmp}/stage/kcadm.sh"
 
@@ -112,26 +136,6 @@ mv "${tmp}/stage" "$lib_dir"
 ln -sfn "${lib_dir}/kcadm.sh" /usr/local/bin/kcadm.sh
 ln -sfn "${lib_dir}/kcadm.sh" /usr/local/bin/kcadm
 
-# Prints the running Java's major version (e.g. 21), or nothing.
-java_major() {
-    java -XshowSettings:properties -version 2>&1 \
-        | awk -F'= ' '/^[[:space:]]*java\.specification\.version =/ { sub(/^1\./, "", $2); split($2, v, "."); print v[1]; exit }'
-}
-
-if command -v java >/dev/null 2>&1; then
-    major="$(java_major)"
-    if ! [[ "$major" =~ ^[0-9]+$ ]] || [ "$major" -lt "$min_java" ]; then
-        if [ "$install_jre" = true ]; then
-            echo "cli-keycloak: default-jre-headless gave Java '${major}', but kcadm needs ${min_java} or newer" >&2
-            exit 1
-        fi
-        echo "cli-keycloak: warning: java on PATH is version '${major}'; kcadm needs ${min_java} or newer" >&2
-    fi
-elif [ "$install_jre" = true ]; then
-    echo "cli-keycloak: default-jre-headless installed no java on PATH" >&2
-    exit 1
-else
-    echo "cli-keycloak: note: no java on PATH; kcadm needs Java ${min_java} or newer at run time (install_jre is false)"
-fi
+check_kcadm_java "$install_jre" "$min_java" || exit 1
 
 echo "cli-keycloak: installed kcadm.sh ${IL_VERSION} in ${lib_dir} (kcadm and kcadm.sh on PATH)"
