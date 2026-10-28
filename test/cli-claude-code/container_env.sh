@@ -20,7 +20,9 @@ _json_sets_no_claude_config_dir() {
 }
 
 _json_has_containerenv_update_switches() {
-    tr -d ' \n' <"$(feature_json)" | grep -q '"containerEnv":{"DISABLE_AUTOUPDATER":"1","DISABLE_UPDATES":"1"}'
+    local env
+    env="$(tr -d ' \n' <"$(feature_json)" | grep -o '"containerEnv":{[^}]*}')" || return 1
+    grep -q '"DISABLE_AUTOUPDATER":"1"' <<<"$env" && grep -q '"DISABLE_UPDATES":"1"' <<<"$env"
 }
 
 expect_installed "$(scenario_version container_env)"

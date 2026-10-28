@@ -45,13 +45,17 @@ rm -rf /var/lib/apt/lists/*
 # never get. So copy them, from the same verified .deb, to
 # /usr/local/share/doc/rustfs-cli/ as well. A release without them installs
 # anyway.
-dpkg-deb -x "${tmp}/${asset}" "${tmp}/deb"
-notices=("${tmp}/deb/usr/share/doc/rustfs-cli/"LICENSE*)
-if [ -f "${notices[0]}" ]; then
+notices=()
+if dpkg-deb -x "${tmp}/${asset}" "${tmp}/deb"; then
+    notices=("${tmp}/deb/usr/share/doc/rustfs-cli/"LICENSE*)
+else
+    echo "cli-rustfs: warning: could not unpack ${asset} (see dpkg-deb above)" >&2
+fi
+if [ "${#notices[@]}" -gt 0 ] && [ -f "${notices[0]}" ]; then
     install -d -m 0755 /usr/local/share/doc/rustfs-cli
     install -m 0644 "${notices[@]}" /usr/local/share/doc/rustfs-cli/
 else
-    echo "cli-rustfs: warning: ${asset} has no /usr/share/doc/rustfs-cli/LICENSE*; no license notice installed" >&2
+    echo "cli-rustfs: warning: no /usr/share/doc/rustfs-cli/LICENSE* found in ${asset}; no license notice installed" >&2
 fi
 
 installed="$(dpkg-query -W -f='${Version}' rustfs-cli)"

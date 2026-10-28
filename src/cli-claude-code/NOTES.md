@@ -16,6 +16,7 @@ needs no Node.js. The feature:
 
 It declares no mounts and doesn't set `CLAUDE_CONFIG_DIR`: where Claude
 Code's state and credentials live is your choice, not the feature's.
+
 ## Pinning the version
 
 This feature has no default version. You choose the Claude Code release

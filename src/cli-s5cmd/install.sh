@@ -37,10 +37,10 @@ il_install_bin "${tmp}/s5cmd" s5cmd
 
 # s5cmd is MIT-licensed; its notice comes from the same verified tarball.
 # A release without it (none known) installs the binary anyway.
-if tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner LICENSE 2>/dev/null; then
+if tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner LICENSE; then
     install -D -m 0644 "${tmp}/LICENSE" /usr/local/share/doc/s5cmd/LICENSE
 else
-    echo "cli-s5cmd: warning: ${asset} has no LICENSE; no license notice installed" >&2
+    echo "cli-s5cmd: warning: could not extract LICENSE from ${asset} (see tar above); no license notice installed" >&2
 fi
 
 echo "cli-s5cmd: installed $(/usr/local/bin/s5cmd version)"

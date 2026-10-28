@@ -39,10 +39,10 @@ il_install_bin "${tmp}/${dir}/bin/valkey-cli" valkey-cli
 # Valkey is BSD-3-Clause, whose notice must accompany the binary; it comes
 # from the same verified tarball. A release without it installs the binary
 # anyway.
-if tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner "${dir}/share/LICENSE" 2>/dev/null; then
+if tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner "${dir}/share/LICENSE"; then
     install -D -m 0644 "${tmp}/${dir}/share/LICENSE" /usr/local/share/doc/valkey-cli/LICENSE
 else
-    echo "cli-valkey: warning: ${asset} has no share/LICENSE; no license notice installed" >&2
+    echo "cli-valkey: warning: could not extract share/LICENSE from ${asset} (see tar above); no license notice installed" >&2
 fi
 
 # valkey-cli links libssl.so.3 and libcrypto.so.3. The debian:13 and

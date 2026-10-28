@@ -128,10 +128,10 @@ fi
 # installs anyway.
 mkdir "${tmp}/doc"
 if tar -xzf "${tmp}/${asset}" -C "${tmp}/doc" --no-same-owner --strip-components=1 \
-    "keycloak-${IL_VERSION}/LICENSE.txt" 2>/dev/null; then
+    "keycloak-${IL_VERSION}/LICENSE.txt"; then
     install -D -m 0644 "${tmp}/doc/LICENSE.txt" /usr/local/share/doc/keycloak-cli/LICENSE.txt
 else
-    echo "cli-keycloak: warning: ${asset} has no LICENSE.txt; no license notice installed" >&2
+    echo "cli-keycloak: warning: could not extract LICENSE.txt from ${asset} (see tar above); no license notice installed" >&2
 fi
 rm -f "${tmp}/${asset}"
 chmod -R u=rwX,go=rX "${tmp}/stage"
