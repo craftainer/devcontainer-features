@@ -34,4 +34,8 @@ il_fetch_verified "$url" "$IL_SHA256" "${tmp}/${asset}"
 tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner "${dir}/bin/valkey-cli"
 il_install_bin "${tmp}/${dir}/bin/valkey-cli" valkey-cli
 
-echo "cli-valkey: installed $(/usr/local/bin/valkey-cli --version)"
+# A separate assignment, so a binary that can't start (missing glibc 2.38
+# or libssl.so.3) fails the install under set -e instead of being masked
+# inside echo's arguments.
+installed="$(/usr/local/bin/valkey-cli --version)"
+echo "cli-valkey: installed ${installed}"
