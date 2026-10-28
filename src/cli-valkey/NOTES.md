@@ -10,7 +10,10 @@ alias is created.
 The feature always uses upstream's Ubuntu 24.04 (`noble`) build, on Debian
 too. That build needs glibc 2.38 or later and OpenSSL 3 (`libssl.so.3`,
 `libcrypto.so.3`). Debian 13 (glibc 2.41) and Ubuntu 24.04 (glibc 2.39)
-have both in their base images, so nothing extra is installed. Older
+have glibc new enough. OpenSSL 3 is in their base images today only as a
+dependency of other packages, so when `ldconfig` finds no `libssl.so.3`
+the feature installs `libssl3t64` (OpenSSL 3's package on both distros)
+from the distro's archive. Otherwise nothing extra is installed. Older
 distros such as Debian 12 or Ubuntu 22.04 are not supported; upstream's
 `jammy` build exists for those, but this feature doesn't use it.
 
@@ -162,4 +165,4 @@ services:
 
 Debian 13 and Ubuntu 24.04 or later, on amd64 and arm64 (see "What it
 installs" for the glibc and OpenSSL requirement). The install needs `tar`,
-and installs `curl` and `ca-certificates` if either is missing.
+and installs `curl`, `ca-certificates` and `libssl3t64` if any is missing.
