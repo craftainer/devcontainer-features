@@ -264,8 +264,11 @@ both proxy connections and direct API access"). Bun also honours
 `SSL_CERT_FILE` / `SSL_CERT_DIR`, which add CA certificates on top of the
 bundled ones
 ([Bun environment variables](https://bun.com/docs/runtime/env)). `ssl-ca`
-sets all of these to the system trust store it updates, so a root CA it
-installs is trusted with no further setting. Without `ssl-ca`, set
+sets all four in `containerEnv`: `NODE_EXTRA_CA_CERTS` and `SSL_CERT_FILE`
+to the system bundle `/etc/ssl/certs/ca-certificates.crt` it updates,
+`SSL_CERT_DIR` to `/etc/ssl/certs`, and `NODE_USE_SYSTEM_CA` to `1` (the
+full list of twelve is in its NOTES.md). So a root CA it installs is
+trusted with no further setting. Without `ssl-ca`, set
 `NODE_EXTRA_CA_CERTS` to your CA's PEM file in `containerEnv`.
 
 opencode's TUI talks to a local HTTP server, so if you set `HTTPS_PROXY`

@@ -1,0 +1,45 @@
+{
+  "id": "ssl-ca",
+  "version": "1.0.0",
+  "name": "Custom root CAs (ssl-ca)",
+  "description": "Installs custom root CA certificates (inline PEM, URLs checked against a sha256 you supply, or *.crt files already in the image) into the system trust store and every JDK cacerts it finds, and points the usual per-tool CA variables at the system bundle. List it first in overrideFeatureInstallOrder.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/ssl-ca",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["ca", "certificates", "tls", "ssl", "enterprise", "proxy", "trust store"],
+  "options": {
+    "certs": {
+      "type": "string",
+      "default": "",
+      "description": "Inline PEM certificate(s), e.g. \"${localEnv:CORP_CA_PEM}\". Literal newlines or \\n escapes both work. Set it here, or as SSL_CA_CERTS in the image environment, or in the pins file."
+    },
+    "urls": {
+      "type": "string",
+      "default": "",
+      "description": "URL(s) of PEM or DER certificates (https, http or file), separated by commas or blanks. Each needs its sha256 in sha256s, in the same order. Set both here, or as SSL_CA_URLS and SSL_CA_SHA256S in the image environment, or in the pins file."
+    },
+    "sha256s": {
+      "type": "string",
+      "default": "",
+      "description": "One sha256 per URL in urls, in the same order, separated by commas or blanks. Set it in the same place as urls."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read for SSL_CA_CERTS, SSL_CA_URLS and SSL_CA_SHA256S when neither the options nor the image environment set them. Empty means /etc/devcontainer-features/pins.env."
+    }
+  },
+  "containerEnv": {
+    "SSL_CERT_FILE": "/etc/ssl/certs/ca-certificates.crt",
+    "SSL_CERT_DIR": "/etc/ssl/certs",
+    "REQUESTS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt",
+    "CURL_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt",
+    "PIP_CERT": "/etc/ssl/certs/ca-certificates.crt",
+    "NODE_EXTRA_CA_CERTS": "/etc/ssl/certs/ca-certificates.crt",
+    "NODE_USE_SYSTEM_CA": "1",
+    "AWS_CA_BUNDLE": "/etc/ssl/certs/ca-certificates.crt",
+    "GIT_SSL_CAINFO": "/etc/ssl/certs/ca-certificates.crt",
+    "CARGO_HTTP_CAINFO": "/etc/ssl/certs/ca-certificates.crt",
+    "DENO_CERT": "/etc/ssl/certs/ca-certificates.crt",
+    "UV_NATIVE_TLS": "1"
+  }
+}
