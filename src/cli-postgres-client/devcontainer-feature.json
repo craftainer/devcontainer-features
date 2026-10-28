@@ -1,0 +1,21 @@
+{
+  "id": "cli-postgres-client",
+  "version": "1.0.0",
+  "name": "PostgreSQL client (psql)",
+  "description": "Installs the PostgreSQL client (psql, pg_dump, pg_restore) from the PostgreSQL apt repository (PGDG) at an exact upstream version you choose, e.g. 18.6. apt checks the packages against PGDG's signing key, which the feature pins by fingerprint. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-postgres-client",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["postgresql", "postgres", "psql", "pg_dump", "pg_restore", "cli"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "PostgreSQL client version to install, as the upstream version (e.g. 18.6), with no leading v and no Debian revision. Set it here, or as CLI_POSTGRES_CLIENT_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set the version. Empty means /etc/devcontainer-features/pins.env."
+    }
+  }
+}
