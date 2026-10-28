@@ -1,0 +1,34 @@
+{
+  "id": "cli-opencode",
+  "version": "1.0.0",
+  "name": "opencode",
+  "description": "Installs the opencode AI coding agent (anomalyco/opencode) at an exact version, checked against a sha256 you supply, with its update checks turned off. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-opencode",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["opencode", "ai", "coding agent", "cli"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "opencode version to install, without the v of the release tag (e.g. 1.19.5). Set it with its sha256 here, or as CLI_OPENCODE_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "sha256_amd64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of the release's opencode-linux-x64.tar.gz, needed on amd64. Set it here, or as CLI_OPENCODE_SHA256_AMD64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "sha256_arm64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of the release's opencode-linux-arm64.tar.gz, needed on arm64. Set it here, or as CLI_OPENCODE_SHA256_ARM64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set a pin. Empty means /etc/devcontainer-features/pins.env."
+    }
+  },
+  "containerEnv": {
+    "OPENCODE_DISABLE_AUTOUPDATE": "1"
+  }
+}
