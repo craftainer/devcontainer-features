@@ -151,24 +151,40 @@ reachable that way when you run kcadm.** `install_jre` is ignored for
 
 ## The `rest` wrapper
 
-`kcadm METHOD PATH [JSON]` fetches an admin token for the `admin-cli`
-client in the `master` realm, sends one request to `$KEYCLOAK_URL$PATH`
-with it, and pretty-prints the JSON reply. It reads at run time:
+`kcadm METHOD PATH [JSON]` logs in as the admin (password grant, the
+`admin-cli` client, the `master` realm), sends one request to
+`$KEYCLOAK_URL$PATH` with the token, and prints the reply: pretty-printed
+if it is JSON, as it is otherwise. It reads at run time:
 
 | Variable | Meaning |
 | --- | --- |
-| `KEYCLOAK_URL` | the server's base URL; default `http://keycloak:8080` |
-| `KEYCLOAK_ADMIN` | the admin user name (required) |
-| `KEYCLOAK_ADMIN_PASSWORD` | its password (required) |
+| `KEYCLOAK_URL` | the server's base URL, e.g. `http://keycloak:8080` |
+| `KEYCLOAK_ADMIN` | the admin user name |
+| `KEYCLOAK_ADMIN_PASSWORD` | its password |
+
+All three are required. If one is unset or empty, kcadm names it and
+exits 1.
 
 ```sh
 kcadm GET /admin/realms
 kcadm POST /admin/realms/myrealm/users '{"username": "alice", "enabled": true}'
 ```
 
-It exits non-zero on a failed login or an HTTP error. curl runs with
-`-sf`, so the HTTP status and body of an error aren't shown. It is the craftainer app templates' `develop.d` wrapper,
-ported as it is, so its usage example names `template-fastapi`'s realm.
+- The login form is URL-encoded, so any password works.
+- The password, the token and the JSON body reach curl through stdin or a
+  header file in a private temporary directory, never as arguments, so
+  `ps` doesn't show them.
+- The body is sent byte for byte; a leading `@` is not read as a file.
+- A failed login prints `kcadm: login failed: HTTP <code>` and the
+  server's reply. Any other reply outside 2xx prints
+  `kcadm: METHOD PATH: HTTP <code>` and the reply body, all on stderr,
+  and exits 1. A connection failure shows curl's error and exits 1.
+
+It is ported from the craftainer app templates' `develop.d` wrapper
+(`template-fastapi`'s `scripts/develop.d/40-kcadm.sh`), with the same
+arguments and variables. The differences: `KEYCLOAK_URL` no longer
+defaults to `http://keycloak:8080`, and errors are reported as above
+instead of exiting silently.
 
 ## Install order with `ssl-ca`
 
