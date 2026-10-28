@@ -12,7 +12,7 @@ is versioned on its own (see
 - **CLI features** (`cli-*`) install a command-line tool at an exact
   version you pin. A downloaded artifact is checked against a sha256 you
   supply; the two apt-installed CLIs trust the repository's signature,
-  with its signing key pinned in the feature (see
+  with a third-party repository's signing key pinned in the feature (see
   [Verification](#verification)).
 - **Enterprise features** adapt a devcontainer to a corporate network,
   starting with `ssl-ca` for custom root CAs.
@@ -44,7 +44,9 @@ Every feature also takes a `pins_file` option (see below).
 
 ### Pin channels
 
-Each feature resolves its pin from the first of these that sets it:
+Each feature resolves its pin from the first of these that sets it
+(`ssl-ca` resolves `certs` and the `urls`/`sha256s` pair separately,
+each from its own first channel):
 
 1. **The feature option**: `version`, plus `sha256_amd64` and
    `sha256_arm64` (or `sha256` for an arch-independent artifact).
@@ -62,9 +64,11 @@ sets only half of a pin fails, rather than borrowing the rest from a later
 channel.
 
 **Naming rule:** `<ID>` is the feature id upper-cased, with `-` turned
-into `_`, and every variable is `<ID>_<OPTION>`. So `cli-rustfs`'s
+into `_`, and every pin variable is `<ID>_<OPTION>`. So `cli-rustfs`'s
 `sha256_amd64` is `CLI_RUSTFS_SHA256_AMD64`, `cli-keycloak`'s `flavor` is
-`CLI_KEYCLOAK_FLAVOR`, and `ssl-ca`'s `urls` is `SSL_CA_URLS`.
+`CLI_KEYCLOAK_FLAVOR`, and `ssl-ca`'s `urls` is `SSL_CA_URLS`. The other
+options, `pins_file` and `cli-keycloak`'s `install_jre`, are read only
+from the feature option.
 
 An option, fed from the host with `${localEnv:...}`:
 
@@ -134,7 +138,9 @@ feature sets a state-path variable such as `CLAUDE_CONFIG_DIR` either.
 
 - **`cli-claude-code` and `cli-opencode`** create their state directories
   in the remote user's home, owned by that user with mode `0700`, so a
-  named volume you mount there starts out writable. Their NOTES.md give
+  named volume you mount there starts out writable. Claude Code also
+  keeps `~/.claude.json` outside `~/.claude`, so a volume on `~/.claude`
+  alone doesn't keep the login; see its NOTES.md. Their NOTES.md give
   three options: a volume per project, one volume shared by all projects,
   or no volume and a token or API key passed in from the host (the
   recommended option for enterprise use).
@@ -174,8 +180,8 @@ use the referenced feature. Set the order yourself with
   "ghcr.io/craftainer/devcontainer-features/cli-claude-code:1": {}
 },
 "overrideFeatureInstallOrder": [
-  "ghcr.io/devcontainers/features/common-utils",
   "ghcr.io/craftainer/devcontainer-features/ssl-ca",
+  "ghcr.io/devcontainers/features/common-utils",
   "ghcr.io/craftainer/devcontainer-features/cli-claude-code"
 ]
 ```

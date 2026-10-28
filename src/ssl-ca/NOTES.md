@@ -102,15 +102,14 @@ reachable through one of the `urls` can't be trusted in time for its own
 download: use `http://`, `file:///`, `certs` or a pre-placed file for that
 one.
 
-That ordering covers only the certificate downloads, not the packages
-`ssl-ca` itself needs. When `openssl` or `ca-certificates` is missing, it
-installs them with apt before any of your CAs is trusted, and when `urls`
-are given without `curl` in the image, `curl` is installed before the URL
-certificates are. So these installs can reach the network before your
-CA is in place: if the image's apt sources are https behind the
-intercepting proxy, they fail. Start from an image that already has
-`openssl`, `ca-certificates` and (for `urls`) `curl`, or whose apt sources
-the proxy doesn't intercept.
+That ordering doesn't cover the packages `ssl-ca` itself needs first.
+When `openssl` or `ca-certificates` is missing, it installs them with apt
+before any of your CAs is trusted, so if the image's apt sources are https
+behind the intercepting proxy, that install fails. Start from an image
+that already has `openssl` and `ca-certificates`, or whose apt sources the
+proxy doesn't intercept. (`curl`, when `urls` need it, is installed after
+the inline and pre-placed CAs are trusted, so a proxy CA given through
+`certs` or a pre-placed `.crt` already covers that install.)
 
 ### A certificate already in your image
 
@@ -187,8 +186,9 @@ value your image already set: a `CURL_CA_BUNDLE` or `SSL_CERT_FILE` from
 your Dockerfile's `ENV` is overridden with the system bundle, both for
 `ssl-ca`'s own URL downloads and in the built image. To point a tool at a
 different bundle, set the variable at run time in your `devcontainer.json`
-(`containerEnv` or `remoteEnv`); a later feature's `containerEnv` would
-override it too, but neither changes what `ssl-ca`'s downloads use.
+(`containerEnv` or `remoteEnv`), which takes precedence over the image's
+`ENV`; that changes what the running container uses, not what `ssl-ca`'s
+downloads used at build time.
 
 ## Environment variables
 
