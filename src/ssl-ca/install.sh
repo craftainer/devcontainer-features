@@ -43,6 +43,10 @@ fi
 # certificates (with nothing at all, the error below says it too).
 if [ -n "${PINS_FILE:-}" ] && [ ! -e "$pins_file" ]; then
     echo "ssl-ca: warning: the pins_file option names ${pins_file}, which doesn't exist; not reading a pins file" >&2
+elif [ -n "${PINS_FILE:-}" ] && [ ! -f "$pins_file" ]; then
+    # Only a regular file is read (pins_value tests -f), so a directory or
+    # other non-file path would otherwise be skipped silently.
+    echo "ssl-ca: warning: the pins_file option names ${pins_file}, which isn't a regular file; not reading a pins file" >&2
 fi
 
 # pins_value <KEY>: prints SSL_CA_<KEY> from the pins file, or nothing.
