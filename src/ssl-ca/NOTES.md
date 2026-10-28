@@ -208,7 +208,8 @@ downloads used at build time.
 | `GIT_SSL_CAINFO` | git over https | Overrides `http.sslCAInfo`. |
 | `CARGO_HTTP_CAINFO` | cargo | Overrides `http.cainfo`. |
 | `DENO_CERT` | Deno | Added to Deno's default (Mozilla) store. |
-| `UV_NATIVE_TLS` | uv | `1`: use the platform's store. uv now documents it as deprecated in favour of `UV_SYSTEM_CERTS`; it still works, and uv also honours `SSL_CERT_FILE`, which overrides both. |
+| `UV_SYSTEM_CERTS` | uv 0.11.0 and later | `1`: use the platform's store instead of uv's bundled Mozilla roots. uv also honours `SSL_CERT_FILE`, which overrides both uv switches. |
+| `UV_NATIVE_TLS` | uv | The same switch under its older name, which uv documents as deprecated in favour of `UV_SYSTEM_CERTS`; still set because uv before 0.11.0 reads only this one. |
 
 The variables are static, so they are set even when the bundle doesn't
 contain your CA yet; that only happens if the install failed, which stops

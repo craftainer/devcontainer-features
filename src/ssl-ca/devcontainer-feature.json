@@ -40,6 +40,7 @@
     "GIT_SSL_CAINFO": "/etc/ssl/certs/ca-certificates.crt",
     "CARGO_HTTP_CAINFO": "/etc/ssl/certs/ca-certificates.crt",
     "DENO_CERT": "/etc/ssl/certs/ca-certificates.crt",
-    "UV_NATIVE_TLS": "1"
+    "UV_NATIVE_TLS": "1",
+    "UV_SYSTEM_CERTS": "1"
   }
 }

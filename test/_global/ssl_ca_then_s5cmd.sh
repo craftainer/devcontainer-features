@@ -32,10 +32,11 @@ ca_in_bundle() {
 container_env_ok() {
     local name want status=0
     for name in SSL_CERT_FILE REQUESTS_CA_BUNDLE CURL_CA_BUNDLE PIP_CERT NODE_EXTRA_CA_CERTS \
-        AWS_CA_BUNDLE GIT_SSL_CAINFO CARGO_HTTP_CAINFO DENO_CERT SSL_CERT_DIR NODE_USE_SYSTEM_CA UV_NATIVE_TLS; do
+        AWS_CA_BUNDLE GIT_SSL_CAINFO CARGO_HTTP_CAINFO DENO_CERT SSL_CERT_DIR NODE_USE_SYSTEM_CA UV_NATIVE_TLS \
+        UV_SYSTEM_CERTS; do
         case "$name" in
             SSL_CERT_DIR) want=/etc/ssl/certs ;;
-            NODE_USE_SYSTEM_CA | UV_NATIVE_TLS) want=1 ;;
+            NODE_USE_SYSTEM_CA | UV_NATIVE_TLS | UV_SYSTEM_CERTS) want=1 ;;
             *) want="$BUNDLE" ;;
         esac
         if [ "${!name:-}" != "$want" ]; then
