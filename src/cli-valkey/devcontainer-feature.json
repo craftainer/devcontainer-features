@@ -1,0 +1,31 @@
+{
+  "id": "cli-valkey",
+  "version": "1.0.0",
+  "name": "valkey-cli",
+  "description": "Installs valkey-cli, the Valkey command-line client, from upstream's binary release at an exact version, checked against a sha256 you supply. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-valkey",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["valkey", "valkey-cli", "redis", "cli"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "Valkey version to install, without a leading v (e.g. 9.1.3). Set it with its sha256 here, or as CLI_VALKEY_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "sha256_amd64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of valkey-<version>-noble-x86_64.tar.gz, needed on amd64. Set it here, or as CLI_VALKEY_SHA256_AMD64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "sha256_arm64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of valkey-<version>-noble-arm64.tar.gz, needed on arm64. Set it here, or as CLI_VALKEY_SHA256_ARM64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set a pin. Empty means /etc/devcontainer-features/pins.env."
+    }
+  }
+}
