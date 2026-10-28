@@ -10,18 +10,234 @@ is versioned on its own (see
 [ADR 0001](docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md)).
 
 - **CLI features** (`cli-*`) install a command-line tool at an exact
-  version and check every download against a sha256 you supply.
+  version you pin. A downloaded artifact is checked against a sha256 you
+  supply; the two apt-installed CLIs trust the repository's signature,
+  with its signing key pinned in the feature (see
+  [Verification](#verification)).
 - **Enterprise features** adapt a devcontainer to a corporate network,
   starting with `ssl-ca` for custom root CAs.
 
-A CLI feature takes its version and sha256 from, in order: the feature
-option, an `<ID>_*` environment variable in your base image, or a pins file
-in your base image. There are no bundled defaults: without a pin the
-install fails.
+A CLI feature takes its pin from, in order: the feature option, an
+`<ID>_*` environment variable in your base image, or a pins file in your
+base image. There are no bundled defaults: without a pin the install
+fails.
 
 ## Features
 
-The feature table and usage details are coming with the first release.
+Reference a feature as `ghcr.io/craftainer/devcontainer-features/<id>:1`.
+Each feature's NOTES.md has the full usage; on publish,
+`devcontainers/action` turns it into `src/<id>/README.md`.
+
+| Feature | Installs | Pin inputs | State dirs | Docs |
+| --- | --- | --- | --- | --- |
+| `cli-keycloak` | `kcadm`: `flavor` `official` (Keycloak's `kcadm.sh` plus a headless JRE) or `rest` (a curl wrapper around the Admin REST API, different syntax) | `official`: version plus one `sha256` (the tarball is the same on every arch); `rest`: none | none | [NOTES](src/cli-keycloak/NOTES.md) |
+| `cli-s5cmd` | `s5cmd` | version plus `sha256_amd64` / `sha256_arm64` | none | [NOTES](src/cli-s5cmd/NOTES.md) |
+| `cli-rustfs` | RustFS's `rc`, from the upstream `.deb` | version plus `sha256_amd64` / `sha256_arm64` | none | [NOTES](src/cli-rustfs/NOTES.md) |
+| `cli-postgres-client` | `psql`, `pg_dump`, `pg_restore` and the other client tools from PGDG | version only, via apt | none | [NOTES](src/cli-postgres-client/NOTES.md) |
+| `cli-valkey` | `valkey-cli`, from upstream's binary release | version plus `sha256_amd64` / `sha256_arm64` | none | [NOTES](src/cli-valkey/NOTES.md) |
+| `cli-mosquitto` | `mosquitto_pub`, `mosquitto_sub`, `mosquitto_rr` (repo.mosquitto.org on Debian, the distro archive on Ubuntu) | version only, via apt | none | [NOTES](src/cli-mosquitto/NOTES.md) |
+| `cli-claude-code` | Anthropic's native `claude` binary, auto-updater off | version plus `sha256_amd64` / `sha256_arm64` | `~/.claude` | [NOTES](src/cli-claude-code/NOTES.md) |
+| `cli-opencode` | `opencode` (anomalyco/opencode), update checks off | version plus `sha256_amd64` / `sha256_arm64` | `~/.config/opencode`, `~/.local/share/opencode` | [NOTES](src/cli-opencode/NOTES.md) |
+| `ssl-ca` | custom root CAs into the system trust store and every JDK `cacerts`, plus the per-tool CA variables | `certs` (inline PEM) and/or `urls` with one sha256 each in `sha256s` | none | [NOTES](src/ssl-ca/NOTES.md) |
+
+Every feature also takes a `pins_file` option (see below).
+
+### Pin channels
+
+Each feature resolves its pin from the first of these that sets it:
+
+1. **The feature option**: `version`, plus `sha256_amd64` and
+   `sha256_arm64` (or `sha256` for an arch-independent artifact).
+2. **An `<ID>_*` environment variable in your image**, from an `ENV` line
+   in the Dockerfile your devcontainer builds from.
+3. **A pins file in your image**, `/etc/devcontainer-features/pins.env`
+   unless the `pins_file` option names another path. It holds the same
+   `KEY=value` lines and is parsed, never sourced. One file can hold the
+   pins of every feature; each reads only its own keys.
+4. **Otherwise the install fails**, naming all three channels. There are
+   no bundled defaults.
+
+A version and its sha always come from the same channel: one channel that
+sets only half of a pin fails, rather than borrowing the rest from a later
+channel.
+
+**Naming rule:** `<ID>` is the feature id upper-cased, with `-` turned
+into `_`, and every variable is `<ID>_<OPTION>`. So `cli-rustfs`'s
+`sha256_amd64` is `CLI_RUSTFS_SHA256_AMD64`, `cli-keycloak`'s `flavor` is
+`CLI_KEYCLOAK_FLAVOR`, and `ssl-ca`'s `urls` is `SSL_CA_URLS`.
+
+An option, fed from the host with `${localEnv:...}`:
+
+```jsonc
+"features": {
+  "ghcr.io/craftainer/devcontainer-features/cli-rustfs:1": {
+    "version": "${localEnv:CLI_RUSTFS_VERSION}",
+    "sha256_amd64": "${localEnv:CLI_RUSTFS_SHA256_AMD64}",
+    "sha256_arm64": "${localEnv:CLI_RUSTFS_SHA256_ARM64}"
+  },
+  "ghcr.io/craftainer/devcontainer-features/cli-postgres-client:1": {
+    "version": "${localEnv:CLI_POSTGRES_CLIENT_VERSION}"
+  }
+}
+```
+
+An `ENV` in your Dockerfile, with the feature's options left empty:
+
+```dockerfile
+ENV CLI_RUSTFS_VERSION=0.1.36
+ENV CLI_RUSTFS_SHA256_AMD64=2eb2d646b04206112c44d65ad5107edf1d164fc93f705c978397bc11eb29a95f
+ENV CLI_RUSTFS_SHA256_ARM64=c5ad321059d6478994ee7f07abe131b81def0a09352f08df6eb982c612659ccb
+ENV CLI_POSTGRES_CLIENT_VERSION=18.6
+```
+
+A pins file, copied into the image:
+
+```sh
+# pins.env
+CLI_RUSTFS_VERSION=0.1.36
+CLI_RUSTFS_SHA256_AMD64=2eb2d646b04206112c44d65ad5107edf1d164fc93f705c978397bc11eb29a95f
+CLI_RUSTFS_SHA256_ARM64=c5ad321059d6478994ee7f07abe131b81def0a09352f08df6eb982c612659ccb
+CLI_POSTGRES_CLIENT_VERSION=18.6
+```
+
+```dockerfile
+COPY pins.env /etc/devcontainer-features/pins.env
+```
+
+The details are in
+[ADR 0002](docs/adrs/0002-resolve-pins-from-option-env-or-pins-file-with-no-defaults.md).
+
+### Verification
+
+- **Download features** (`cli-keycloak` `official`, `cli-s5cmd`,
+  `cli-rustfs`, `cli-valkey`, `cli-claude-code`, `cli-opencode`, and
+  `ssl-ca`'s `urls`) check every download against the sha256 you supply:
+  one per arch, or a single one for an artifact that is the same on every
+  arch (the Keycloak tarball, a CA certificate). The feature never fetches
+  upstream's checksum file, so the sha you review is the one that counts.
+  A mismatch deletes the download and fails the install.
+- **apt features** (`cli-postgres-client`, `cli-mosquitto`) take a version
+  only. apt checks every package against the repository's signed index,
+  and the feature pins the third-party repository's signing key by a
+  fingerprint constant (PGDG, and repo.mosquitto.org on Debian). The
+  version is the upstream one (`18.6`, `2.0.22`), not the Debian package
+  version; when the sources carry several Debian revisions of it, the
+  highest is installed. See
+  [ADR 0003](docs/adrs/0003-pin-apt-installed-clis-by-upstream-version-with-a-verified-repo-key.md).
+
+### State and credentials
+
+**A feature declares `mounts` only when its tool can't run without one**,
+and none in this collection does. A feature's mounts can't be switched off
+by an option, and where credentials live is your security choice. No
+feature sets a state-path variable such as `CLAUDE_CONFIG_DIR` either.
+
+- **`cli-claude-code` and `cli-opencode`** create their state directories
+  in the remote user's home, owned by that user with mode `0700`, so a
+  named volume you mount there starts out writable. Their NOTES.md give
+  three options: a volume per project, one volume shared by all projects,
+  or no volume and a token or API key passed in from the host (the
+  recommended option for enterprise use).
+- **The other CLIs** keep no state; pass credentials in from the host
+  (`${localEnv:...}` in `containerEnv`, or a Compose `env_file`) rather
+  than baking them into the image:
+
+  | Feature | Credentials |
+  | --- | --- |
+  | `cli-keycloak` | `KEYCLOAK_URL`, `KEYCLOAK_ADMIN`, `KEYCLOAK_ADMIN_PASSWORD` (read by `rest`); for `official`, pass them to `kcadm.sh config credentials`, with the password in `KC_CLI_PASSWORD` |
+  | `cli-s5cmd` | `AWS_*` and `S3_ENDPOINT_URL` |
+  | `cli-rustfs` | an alias from `rc alias set` in a `postCreateCommand`; `rc` ignores `AWS_*`. A keyed `rc alias set` checks the keys against the endpoint, so the S3 service must be reachable when the command runs |
+  | `cli-postgres-client` | libpq's `PG*` variables (`PGHOST`, `PGUSER`, `PGPASSWORD` or `PGPASSFILE`, ...) |
+  | `cli-valkey` | `VALKEYCLI_AUTH`, or `REDISCLI_AUTH` |
+  | `cli-mosquitto` | `-u` / `-P` on the command line, or each client's own config file (`~/.config/mosquitto_pub` and so on) to keep the password out of `ps` |
+
+### Install order
+
+No feature here declares `installsAfter`: the Dev Container CLI fetches
+every `installsAfter` reference from ghcr.io and fails when it can't,
+which would break offline and proxied builds even for consumers who don't
+use the referenced feature. Set the order yourself with
+`overrideFeatureInstallOrder`:
+
+- list `ssl-ca` first, so your CA is trusted before any other feature
+  downloads something;
+- list a feature that creates the remote user, such as `common-utils`,
+  before `cli-claude-code` and `cli-opencode`, whose install fails if the
+  remote user's home doesn't exist yet.
+
+```jsonc
+"features": {
+  "ghcr.io/devcontainers/features/common-utils:2": {},
+  "ghcr.io/craftainer/devcontainer-features/ssl-ca:1": {
+    "certs": "${localEnv:CORP_CA_PEM}"
+  },
+  "ghcr.io/craftainer/devcontainer-features/cli-claude-code:1": {}
+},
+"overrideFeatureInstallOrder": [
+  "ghcr.io/devcontainers/features/common-utils",
+  "ghcr.io/craftainer/devcontainer-features/ssl-ca",
+  "ghcr.io/craftainer/devcontainer-features/cli-claude-code"
+]
+```
+
+### AWS CLI
+
+This collection doesn't ship the AWS CLI. Use the official
+[`ghcr.io/devcontainers/features/aws-cli`](https://github.com/devcontainers/features/tree/main/src/aws-cli)
+feature, which verifies its download with AWS's GPG signature.
+
+### Supported platforms
+
+Debian 13 and Ubuntu 24.04, including the
+`mcr.microsoft.com/devcontainers/base` images built on them, on amd64 and
+arm64. Alpine and other musl-based images aren't supported. Per-feature
+caveats:
+
+- `cli-valkey` uses upstream's Ubuntu 24.04 build, which needs glibc 2.38
+  or later and OpenSSL 3.
+- `cli-opencode`'s x64 build needs a CPU with AVX2.
+- `cli-keycloak`'s `official` flavor needs Java 21 or newer, installed by
+  default (`install_jre`).
+- `cli-mosquitto`'s available versions differ per distro, so a pin is
+  distro-specific.
+- `cli-rustfs` installs `/usr/bin/rc`, which clashes with Debian's `rc`
+  (Plan 9 shell) package.
+
+## Working on this repo
+
+- **Layout.** Each feature is `src/<id>/` (`devcontainer-feature.json`,
+  `install.sh`, `NOTES.md`) with its tests in `test/<id>/`
+  (`scenarios.json` plus a test script per scenario); `test/_global/` holds
+  cross-feature scenarios.
+- **Shared library.** `common/install-lib.sh` holds the shared helpers. A
+  feature folder is packaged on its own, so each `src/<id>/` carries a
+  verbatim copy as `install-lib.sh`. Edit `common/` and re-copy it into
+  every feature.
+- **prek hooks** (in `scripts/`, run by `prek run --all-files --hook-stage
+  manual` along with shellcheck):
+  - `check-install-lib-drift.sh`: every `src/<id>/install-lib.sh` matches
+    `common/install-lib.sh`.
+  - `check-feature-options.sh`: every pin option (`version`, the sha
+    options, `pins_file`, `ssl-ca`'s `certs`, `urls` and `sha256s`) has
+    `"default": ""`, and a feature with `version` also declares
+    `pins_file`.
+  - `check-version-bump.sh`: a feature changed under `src/<id>/` raised its
+    `version` against `origin/main`.
+- **`.github/workflows/features.yml`.** On pull requests it validates every
+  `devcontainer-feature.json` with `devcontainers/action` and enforces the
+  version bump with full history. On pull requests and `main` it runs each
+  feature's scenarios (`--skip-autogenerated`, since there are no default
+  pins) on `devcontainers/base:trixie`, `devcontainers/base:noble`,
+  `debian:13` and `ubuntu:24.04`, natively on amd64 and arm64, plus the
+  `_global` scenarios. On `main` it publishes every feature whose version
+  is new and opens a PR with the regenerated `src/<id>/README.md` files.
+- **Adding a feature.** Copy `src/cli-s5cmd/` and `test/cli-s5cmd/` to the
+  new id, run `cp common/install-lib.sh src/<id>/install-lib.sh`, and
+  adapt the metadata, `install.sh`, NOTES.md and scenarios.
+- **Bump the version on every change.** `devcontainers/action` never
+  republishes an existing version, so a change under `src/<id>/` ships
+  only when that feature's `version` goes up
+  ([ADR 0001](docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md)).
 
 This repo is an instance of
 [`template-base`](https://github.com/craftainer/template-base). See

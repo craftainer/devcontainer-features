@@ -157,3 +157,8 @@ Debian and Ubuntu, on amd64 and arm64. The package's binary is statically
 linked, so it needs no particular glibc. The install runs `apt-get update`
 and `apt-get install` for the downloaded `.deb`, and installs `curl` and
 `ca-certificates` first if either is missing.
+
+**`/usr/bin/rc` clashes with Debian's `rc` package** (the Plan 9 `rc`
+shell), which installs a file at the same path, so on an image that has
+that package installed this feature's install fails. Remove the `rc`
+shell from the image first if you need RustFS's `rc`.
