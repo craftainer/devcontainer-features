@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted
+Accepted. Amended by [0004](0004-collection-github-releases.md): the
+collection now gets one GitHub Release, tagged `v<x.y.z>`, per publish
+that changed a feature version.
 
 ## Context
 
