@@ -223,18 +223,25 @@ or
 }
 ```
 
-## Install order with `ssl-ca`
+## Install order
 
-If you also use this collection's `ssl-ca` feature for a corporate root
-CA, the CA has to be trusted before Claude Code is downloaded. This
-feature deliberately declares no `installsAfter` on `ssl-ca`: the Dev
-Container CLI fetches every `installsAfter` reference from ghcr.io, so
-declaring one would make every build reach ghcr.io for `ssl-ca` even when
-you don't use it. If you use `ssl-ca`, list it first in
-`overrideFeatureInstallOrder`:
+This feature deliberately declares no `installsAfter`: the Dev Container
+CLI fetches every `installsAfter` reference from ghcr.io, so declaring one
+would make every build reach ghcr.io for features you may not use. Set
+the order yourself with `overrideFeatureInstallOrder` in these two cases.
+
+- **`ssl-ca`.** If you use this collection's `ssl-ca` feature for a
+  corporate root CA, the CA has to be trusted before Claude Code is
+  downloaded, so list `ssl-ca` first.
+- **A feature that creates the remote user**, such as
+  `ghcr.io/devcontainers/features/common-utils` on an image without that
+  user. This feature creates `~/.claude` in the remote user's home, and
+  the install fails if that home doesn't exist yet, so list the
+  user-creating feature before this one.
 
 ```jsonc
 "overrideFeatureInstallOrder": [
+  "ghcr.io/devcontainers/features/common-utils",
   "ghcr.io/craftainer/devcontainer-features/ssl-ca",
   "ghcr.io/craftainer/devcontainer-features/cli-claude-code"
 ]
