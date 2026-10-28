@@ -10,15 +10,19 @@
 # append stdout to $GITHUB_OUTPUT. Everything else goes to stderr.
 #
 # - Previous release: the highest v<x.y.z> tag (strict SemVer, no
-#   pre-release); with none, the release is v1.0.0.
+#   pre-release) that is an ancestor of HEAD; with none, the release is
+#   v1.0.0. Release tags on commits off HEAD's history are ignored.
 # - Bump: each src/<id>/devcontainer-feature.json "version" at HEAD against
 #   the same file at the previous tag. A major bump or a removed feature
 #   bumps major; else a minor bump or a new feature bumps minor; else a
 #   patch bump bumps patch; no change means no release.
-# - Idempotent, so a re-run of the job is safe: no release when a v<x.y.z>
-#   tag already points at HEAD, when the computed tag already exists, or
-#   when the previous tag isn't an ancestor of HEAD (a re-run of an older
-#   push after a newer release).
+# - Idempotent, so a re-run of the job is safe:
+#   - a v<x.y.z> tag already on HEAD is reused (tag=<it>, notes against the
+#     previous release), so the workflow can create a release that is
+#     missing for an existing tag and skip one that exists;
+#   - no release when a release tag on a later commit already contains
+#     HEAD (a re-run of an older push after a newer release).
+#   The computed tag existing elsewhere (off HEAD's history) is an error.
 # - Repo for links and the OCI namespace: $GITHUB_SERVER_URL and
 #   $GITHUB_REPOSITORY, defaulting to github.com/craftainer/devcontainer-features.
 #
@@ -57,11 +61,21 @@ feature_version() {
 }
 
 # Prints the feature ids at revision $1, one per line: every src/<id>/ that
-# has a devcontainer-feature.json.
+# has a devcontainer-feature.json. Fails on an id features.yml's discover
+# job would reject, so callers can split the list on whitespace safely.
 feature_ids() {
-    git ls-tree -r --name-only "$1" -- src/ \
+    local ids id
+    ids="$(git ls-tree -r --name-only "$1" -- src/ \
         | sed -n 's|^src/\([^/]*\)/devcontainer-feature\.json$|\1|p' \
-        | sort
+        | sort)" || return 1
+    while IFS= read -r id; do
+        [ -n "$id" ] || continue
+        if ! [[ "$id" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+            log "invalid feature id '${id}' at ${1}"
+            return 1
+        fi
+        printf '%s\n' "$id"
+    done <<<"$ids"
 }
 
 # Prints major, minor, patch or none for X.Y.Z $1 -> $2; fails when $2 is
@@ -91,33 +105,40 @@ rank() {
     esac
 }
 
-# Release tags, highest first.
-release_tags="$(
-    git tag --list 'v*' \
-        | grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' \
+# Prints the release tags (v<x.y.z>) among the tag names on stdin, highest
+# first.
+release_tags() {
+    { grep -E '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$' || true; } \
         | sort -t. -k1.2,1nr -k2,2nr -k3,3nr
-)" || true
+}
 
-head_sha="$(git rev-parse HEAD)"
-for t in $release_tags; do
-    if [ "$(git rev-parse "${t}^{commit}")" = "$head_sha" ]; then
-        no_release "HEAD is already released as ${t}; nothing to do"
-    fi
-done
+# The highest release tag on HEAD itself, if any (a re-run, or a tag pushed
+# by hand): reused, so its release is created if it's missing.
+head_tag="$(git tag --points-at HEAD | release_tags | sed -n 1p)"
 
-prev="$(printf '%s\n' "$release_tags" | head -n 1)"
-if [ -n "$prev" ] && ! git merge-base --is-ancestor "$prev" HEAD; then
-    no_release "the latest release ${prev} isn't an ancestor of HEAD (a re-run of an older push?); nothing to do"
+# A release tag on a later commit that contains HEAD: this is a re-run of
+# an older push, and that release already covers HEAD.
+if [ -z "$head_tag" ] && [ -n "$(git tag --contains HEAD | release_tags)" ]; then
+    no_release "a later release already contains HEAD (a re-run of an older push?); nothing to do"
 fi
+
+# The previous release: the highest release tag in HEAD's history, other
+# than the ones on HEAD.
+prev="$(
+    { git tag --merged HEAD | grep -vxF -f <(git tag --points-at HEAD) || true; } \
+        | release_tags | sed -n 1p
+)"
 
 declare -A old_v=() new_v=() change=()
 level=none
 
-for id in $(feature_ids HEAD); do
+head_ids="$(feature_ids HEAD)"
+for id in $head_ids; do
     new_v[$id]="$(feature_version "HEAD:src/${id}/devcontainer-feature.json")"
 done
 if [ -n "$prev" ]; then
-    for id in $(feature_ids "$prev"); do
+    prev_ids="$(feature_ids "$prev")"
+    for id in $prev_ids; do
         old_v[$id]="$(feature_version "${prev}:src/${id}/devcontainer-feature.json")"
     done
 fi
@@ -153,7 +174,10 @@ for id in "${!old_v[@]}"; do
     fi
 done
 
-if [ -z "$prev" ]; then
+if [ -n "$head_tag" ]; then
+    tag="$head_tag"
+    log "HEAD is already tagged ${tag}; reusing it so a missing release gets created"
+elif [ -z "$prev" ]; then
     tag=v1.0.0
 else
     IFS=. read -r M m p <<<"${prev#v}"
@@ -165,8 +189,11 @@ else
     esac
 fi
 
-if git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null; then
-    no_release "tag ${tag} already exists; nothing to do"
+# Not on HEAD, not in its history and not containing it (all handled
+# above): a tag elsewhere that a release here would collide with.
+if [ -z "$head_tag" ] && git rev-parse --verify --quiet "refs/tags/${tag}" >/dev/null; then
+    log "tag ${tag} already exists on a commit outside HEAD's history; resolve it by hand"
+    exit 1
 fi
 
 if [ -n "$prev" ]; then

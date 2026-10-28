@@ -2,7 +2,9 @@
 # Tests scripts/collection-release.sh against throwaway git repos: the
 # first release, each bump level, new and removed features, no change,
 # re-runs (HEAD already tagged, an older push after a newer release),
-# a version that went down, and tags that aren't release tags.
+# release tags off HEAD's history (ignored, or an error on a collision),
+# invalid feature ids, a version that went down, and tags that aren't
+# release tags.
 #
 # Self-contained: needs only bash, git and jq. Run by the
 # collection-release prek hook; run it by hand from anywhere.
@@ -179,14 +181,55 @@ commit three
 run
 expect_tag v1.10.1
 
-# --- existing tag: HEAD already released (a job re-run) ---
+# --- existing tag: HEAD already tagged (a job re-run, or a release that
+# failed after its tag was made) reuses the tag, so the workflow can create
+# a missing release ---
 released_base existing-tag
 feature a 1.0.1
 commit "fix a"
 tag v1.0.1
 run
-expect_tag ""
-expect_no_notes
+expect_tag v1.0.1
+expect_notes "compared with v1.0.0"
+expect_notes '| 1.0.0 → 1.0.1 |'
+
+# --- a release tag off HEAD's history doesn't stop releases ---
+released_base stray-tag
+g -C "$repo" checkout --quiet -b side
+feature a 9.0.0
+commit "side branch"
+tag v9.0.0
+g -C "$repo" checkout --quiet main
+feature a 1.0.1
+commit "fix a"
+run
+expect_tag v1.0.1
+expect_notes "compared with v1.0.0"
+
+# --- the computed tag already exists off HEAD's history: an error ---
+released_base tag-collision
+g -C "$repo" checkout --quiet -b side
+feature b 1.0.1
+commit "side branch"
+tag v1.0.1
+g -C "$repo" checkout --quiet main
+feature a 1.0.1
+commit "fix a"
+run
+if [ "$rc" -eq 0 ]; then fail "exit 0 although v1.0.1 exists off HEAD's history"; fi
+if ! grep -qF "tag v1.0.1 already exists on a commit outside HEAD's history" "${repo}.log"; then
+    fail "no collision message; stderr: $(cat "${repo}.log")"
+fi
+
+# --- an invalid feature id fails instead of being word-split ---
+released_base invalid-id
+feature "foo bar" 1.0.0
+commit "bad id"
+run
+if [ "$rc" -eq 0 ]; then fail "exit 0 for feature id 'foo bar'"; fi
+if ! grep -qF "invalid feature id 'foo bar'" "${repo}.log"; then
+    fail "no invalid-id message; stderr: $(cat "${repo}.log")"
+fi
 
 # --- existing tag: re-run of an older push after a newer release ---
 released_base stale-rerun

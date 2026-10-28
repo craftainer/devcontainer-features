@@ -282,7 +282,10 @@ jobs:
   # feature version (docs/adrs/0004-collection-github-releases.md):
   # scripts/collection-release.sh picks the tag (v<x.y.z>, by the highest
   # feature bump since the previous v<x.y.z> tag) and writes the notes.
-  # Re-runs are safe: the script and the "release exists" check skip.
+  # Re-runs are safe: a tag already on HEAD is reused, and the "release
+  # exists" check skips. Like publish's group, a third quick push cancels
+  # the pending release job of the second; the third's release then covers
+  # both, since the bump is computed against the previous tag.
   release:
     needs: publish
     if: >-

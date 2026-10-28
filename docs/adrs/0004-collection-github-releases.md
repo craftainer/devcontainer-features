@@ -33,7 +33,8 @@ successful publish on `main` that changed a feature version, from a
 stays unused).
 
 - **Tag.** `v<x.y.z>` on the published commit. The previous release is
-  the highest `v<x.y.z>` tag; the first release is `v1.0.0`.
+  the highest `v<x.y.z>` tag in that commit's history (tags elsewhere are
+  ignored); the first release is `v1.0.0`.
 - **Bump.** Each `src/<id>/devcontainer-feature.json` `version` is
   compared with the previous release tag. Any feature major bump, or a
   removed feature, bumps major; otherwise a minor bump or a new feature
@@ -43,9 +44,11 @@ stays unused).
   the tag, with the changed ones marked (new, or old → new), the removed
   ones listed, and how to reference a feature
   (`ghcr.io/craftainer/devcontainer-features/<id>:<major>`).
-- **Re-runs are safe.** No release when HEAD already carries a release
-  tag, when the computed tag or release exists, or when the previous
-  release isn't an ancestor of HEAD.
+- **Re-runs are safe.** A release tag already on HEAD is reused, and
+  the job skips when its release exists (or creates it when only the tag
+  does). No release when a later release already contains HEAD (a re-run
+  of an older push). The computed tag existing outside HEAD's history
+  fails the job rather than collide.
 
 The rules live in `scripts/collection-release.sh`, tested by
 `scripts/test-collection-release.sh` (a prek hook, so CI runs it). The
@@ -60,7 +63,12 @@ job has `contents: write` only and uses the workflow's `GITHUB_TOKEN`.
   a consumer contract, and the notes say so.
 - A publish that changed no version (e.g. a docs-only push) makes no
   release, and a failed publish makes none either; the next successful
-  publish's release covers everything since the previous tag.
+  publish's release covers everything since the previous tag. That
+  includes a publish whose packages went out but whose README PR step
+  failed (the release needs the whole publish job to succeed); the
+  pre-flight lets Actions create PRs, so that step isn't expected to
+  fail. The same holds when a quick third push cancels a second push's
+  pending release job.
 - A release created with `GITHUB_TOKEN` doesn't trigger other workflows
   (`release: published`), which nothing here needs.
 - Base's release convention (one way to cut a release, through
