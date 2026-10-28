@@ -252,9 +252,20 @@ library and [`test/README.md`](test/README.md) the scenario tests.
   plus the `_global` scenarios (see [`test/README.md`](test/README.md)).
   On `main` it publishes every feature whose version is new and opens a PR
   with the regenerated `src/<id>/README.md` files.
+- **Collection releases.** After a successful publish on `main`,
+  `features.yml`'s `release` job creates one GitHub Release for the whole
+  collection, tagged `v<x.y.z>` on the published commit
+  ([ADR 0004](docs/adrs/0004-collection-github-releases.md)). The bump is
+  the highest feature change since the previous `v<x.y.z>` tag: a feature
+  major bump or a removed feature bumps major, a minor bump or a new
+  feature bumps minor, a patch bump bumps patch, and no version change
+  means no release; the first is `v1.0.0`. The notes list every feature's
+  `id@version`, marking the changed ones. `scripts/collection-release.sh`
+  holds the rules. Consumers still pin each feature's own version, not
+  the collection tag. Base's `release.yml` is never run here.
 - **Checks.** `prek run --all-files --hook-stage manual` runs shellcheck
   and the hooks in `scripts/` (install-lib drift, feature options, version
-  bump).
+  bump, and the collection release script's test).
 
 This repo is an instance of
 [`template-base`](https://github.com/craftainer/template-base). See
