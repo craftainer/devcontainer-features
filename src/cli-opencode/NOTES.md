@@ -38,9 +38,10 @@ yourself:
 ```sh
 VERSION=1.19.5
 gh release view "v${VERSION}" --repo anomalyco/opencode --json assets \
-  --jq '.assets[] | select(.name == "opencode-linux-x64.tar.gz" or .name == "opencode-linux-arm64.tar.gz") | "\(.name) \(.digest)"'
+  --jq '.assets[] | select(.name == "opencode-linux-x64.tar.gz" or .name == "opencode-linux-arm64.tar.gz") | "\(.name) \(.digest | ltrimstr("sha256:"))"'
 # or
 for a in x64 arm64; do
+  printf '%s ' "opencode-linux-${a}.tar.gz"
   curl -fsSL "https://github.com/anomalyco/opencode/releases/download/v${VERSION}/opencode-linux-${a}.tar.gz" | sha256sum
 done
 ```

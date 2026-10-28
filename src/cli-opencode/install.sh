@@ -49,8 +49,12 @@ il_user_state_dir .config/opencode .local/share/opencode
 # on every start, even for --version. Run it against a throwaway home and
 # TMPDIR (a separate one: $tmp/opencode is the extracted binary) so this
 # root-run check leaves nothing in root's (or anyone's) home directory.
+# Every variable that points opencode's state elsewhere is unset too, so a
+# path the image sets (say OPENCODE_CONFIG_DIR under the remote user's home)
+# isn't created root-owned here.
 mkdir -m 0700 "${tmp}/home" "${tmp}/run"
 installed="$(env -u XDG_CONFIG_HOME -u XDG_DATA_HOME -u XDG_CACHE_HOME -u XDG_STATE_HOME \
+    -u XDG_RUNTIME_DIR -u OPENCODE_CONFIG_DIR -u OPENCODE_CONFIG \
     HOME="${tmp}/home" TMPDIR="${tmp}/run" OPENCODE_DISABLE_AUTOUPDATE=1 \
     /usr/local/bin/opencode --version)"
 echo "cli-opencode: installed opencode ${installed}"
