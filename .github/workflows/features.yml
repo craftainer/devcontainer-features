@@ -1,6 +1,6 @@
-# Validates, tests and publishes this collection's Dev Container Features
-# with devcontainers/action and the Dev Container CLI, modeled on the
-# official feature-starter and devcontainers/features' test-all.yaml (see
+# Validates and tests this collection's Dev Container Features with
+# devcontainers/action and the Dev Container CLI, modeled on the official
+# feature-starter and devcontainers/features' test-all.yaml (see
 # docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md).
 # Instance-owned: listed in .github/template-sync-manifest.local.yml.
 #
@@ -8,13 +8,11 @@
 #   each changed feature raised its version (scripts/check-version-bump.sh).
 # - Pull requests and main: run every feature's scenarios on each base
 #   image, natively on amd64 and arm64, plus the _global scenarios.
-# - main: publish each feature whose version is new to
-#   ghcr.io/<owner>/<repo>/<id>, then open a PR with the regenerated
-#   src/<id>/README.md files. After a successful publish, create one
-#   GitHub Release for the collection, v<x.y.z>, when a feature version
-#   changed (docs/adrs/0004-collection-github-releases.md).
+# - After a successful full release (base's release.yml, which publishes the
+#   features through the Makefile, docs/adrs/0004-collection-github-releases.md):
+#   open a PR with the regenerated src/<id>/README.md files.
 #
-# With no features under src/ yet, every job but version-bump is skipped.
+# Nothing here publishes: merging to main only tests.
 name: Features
 
 on:
@@ -22,9 +20,12 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
 
-# Least privilege: read-only by default. Only the publish and release jobs
-# ask for more, and the repo's default token stays read-only.
+# Least privilege: read-only by default. Only the docs job asks for more,
+# and the repo's default token stays read-only.
 permissions:
   contents: read
 
@@ -36,6 +37,8 @@ env:
 
 jobs:
   discover:
+    # The tests run for code changes, not after a release.
+    if: github.event_name != 'workflow_run'
     # renovate: datasource=github-runners depName=ubuntu
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 5
@@ -221,108 +224,84 @@ jobs:
       - name: Test global scenarios
         run: devcontainer features test --global-scenarios-only .
 
-  publish:
-    needs: [discover, test, test-global]
-    # Runs after the tests pass; a skipped test-global (no _global
-    # scenarios) doesn't block it.
+  # devcontainers/action's generate-docs writes src/<id>/README.md from each
+  # feature's metadata and NOTES.md; it doesn't commit. Run after a full
+  # release, so the READMEs describe what is in the registry: a Release run
+  # on main that succeeded and whose commit carries a published, non-pre-release
+  # GitHub Release (release.yml creates it with --target <sha>). A PR opened
+  # with GITHUB_TOKEN doesn't trigger workflows, so its checks have to be
+  # started by hand (or by pushing to its branch).
+  docs:
     if: >-
-      !cancelled() && !failure()
-      && github.event_name == 'push' && github.ref == 'refs/heads/main'
-      && needs.discover.outputs.features != '[]'
+      github.event_name == 'workflow_run'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
     # renovate: datasource=github-runners depName=ubuntu
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 20
+    timeout-minutes: 10
     concurrency:
-      group: features-publish
+      group: features-docs
       cancel-in-progress: false
     permissions:
-      # The feature packages on GHCR.
-      packages: write
-      # devcontainers/action tags each release (<id>_v<version>), and the
-      # docs step pushes a branch.
+      # Pushes the docs branch.
       contents: write
-      # The docs step opens a PR.
+      # Opens the PR.
       pull-requests: write
+    env:
+      HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Publish features
-        uses: devcontainers/action@bef2cf2d1a019b00b45e184f83035e01bd1972f3 # v1.4.4
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        with:
-          publish-features: "true"
-          base-path-to-features: ./src
-          generate-docs: "true"
-          devcontainer-cli-version: ${{ env.DEVCONTAINER_CLI_VERSION }}
-
-      # generate-docs only writes src/<id>/README.md; it doesn't commit.
-      # A PR opened with GITHUB_TOKEN doesn't trigger workflows, so its
-      # checks have to be started by hand (or by pushing to its branch).
-      - name: Open a PR with the regenerated feature READMEs
+      - name: Find the full release for this commit
+        id: release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -euo pipefail
+          tag="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" |
+            jq -r --arg sha "$HEAD_SHA" '.[] | select(.draft == false and .prerelease == false and .target_commitish == $sha) | .tag_name' |
+            head -n 1)"
+          if [ -z "$tag" ]; then
+            echo "No full release at ${HEAD_SHA}; a pre-release publishes nothing, so the READMEs stay as they are."
+          else
+            echo "Full release ${tag} at ${HEAD_SHA}."
+          fi
+          echo "tag=${tag}" >>"$GITHUB_OUTPUT"
+
+      - name: Check out the released commit
+        if: steps.release.outputs.tag != ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Generate the feature READMEs
+        if: steps.release.outputs.tag != ''
+        uses: devcontainers/action@bef2cf2d1a019b00b45e184f83035e01bd1972f3 # v1.4.4
+        with:
+          generate-docs: "true"
+          base-path-to-features: ./src
+          devcontainer-cli-version: ${{ env.DEVCONTAINER_CLI_VERSION }}
+
+      - name: Open a PR with the regenerated feature READMEs
+        if: steps.release.outputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
           if [ -z "$(git status --porcelain -- 'src/*/README.md')" ]; then
             echo "Feature READMEs unchanged."
             exit 0
           fi
-          branch="automated-docs-update-${GITHUB_RUN_ID}"
+          branch="automated-docs-update-${TAG}"
+          if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
+            echo "Branch ${branch} already exists (a re-run); not opening another PR."
+            exit 0
+          fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git switch -c "$branch"
           git add -- 'src/*/README.md'
-          git commit -m 'docs: regenerate feature READMEs'
+          git commit -m "docs: regenerate feature READMEs for ${TAG}"
           git push origin "$branch"
-          gh pr create --base main --head "$branch" --title 'docs: regenerate feature READMEs' \
-            --body 'Generated by devcontainers/action generate-docs in features.yml after a publish.'
-
-  # One GitHub Release for the whole collection per publish that changed a
-  # feature version (docs/adrs/0004-collection-github-releases.md):
-  # scripts/collection-release.sh picks the tag (v<x.y.z>, by the highest
-  # feature bump since the previous v<x.y.z> tag) and writes the notes.
-  # Re-runs are safe: a tag already on HEAD is reused, and the "release
-  # exists" check skips. Like publish's group, a third quick push cancels
-  # the pending release job of the second; the third's release then covers
-  # both, since the bump is computed against the previous tag.
-  release:
-    needs: publish
-    if: >-
-      !cancelled() && needs.publish.result == 'success'
-      && github.event_name == 'push' && github.ref == 'refs/heads/main'
-    # renovate: datasource=github-runners depName=ubuntu
-    runs-on: ${{ vars.CI_RUNNER || 'ubuntu-24.04' }}
-    timeout-minutes: 5
-    concurrency:
-      group: features-release
-      cancel-in-progress: false
-    permissions:
-      # Creates the tag and the release.
-      contents: write
-    steps:
-      # Full history and every tag: the bump compares HEAD with the
-      # previous release tag.
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Work out the release
-        id: plan
-        run: scripts/collection-release.sh "${RUNNER_TEMP}/release-notes.md" >>"$GITHUB_OUTPUT"
-
-      - name: Create the GitHub Release
-        if: steps.plan.outputs.tag != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ steps.plan.outputs.tag }}
-        run: |
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release ${TAG} already exists; nothing to do."
-            exit 0
-          fi
-          gh release create "$TAG" --target "$GITHUB_SHA" --title "$TAG" \
-            --notes-file "${RUNNER_TEMP}/release-notes.md"
+          gh pr create --base main --head "$branch" --title "docs: regenerate feature READMEs for ${TAG}" \
+            --body "Generated by devcontainers/action generate-docs in features.yml after release ${TAG}."

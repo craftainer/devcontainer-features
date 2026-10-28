@@ -25,7 +25,7 @@ fails.
 ## Features
 
 Reference a feature as `ghcr.io/craftainer/devcontainer-features/<id>:1`.
-Each feature's NOTES.md has the full usage; on publish,
+Each feature's NOTES.md has the full usage; after each full release,
 `devcontainers/action` turns it into `src/<id>/README.md`.
 
 | Feature | Installs | Pin inputs | State dirs | Docs |
@@ -217,14 +217,14 @@ caveats:
 
 There is deliberately no `src/README.md`: `devcontainers/action`
 validates every entry under `src/` as a feature folder, so a plain file
-there fails validation and publishing. The rules for `src/` live here
+there fails validation. The rules for `src/` live here
 instead; [`common/README.md`](common/README.md) covers the shared install
 library and [`test/README.md`](test/README.md) the scenario tests.
 
 - **Layout.** Each feature is `src/<id>/`: `devcontainer-feature.json`,
   `install.sh`, `NOTES.md` and a copy of the shared library as
-  `install-lib.sh`. `src/<id>/README.md` is generated on publish from the
-  metadata and NOTES.md; don't write it by hand.
+  `install-lib.sh`. `src/<id>/README.md` is generated after each full
+  release from the metadata and NOTES.md; don't write it by hand.
 - **`devcontainer-feature.json`.** Every pin option (`version`, the sha
   options, `pins_file`, `ssl-ca`'s `certs`, `urls` and `sha256s`) has
   `"default": ""`, and a feature with `version` also declares
@@ -240,9 +240,10 @@ library and [`test/README.md`](test/README.md) the scenario tests.
 - **Adding a feature.** Copy `src/cli-s5cmd/` and `test/cli-s5cmd/` to the
   new id, run `cp common/install-lib.sh src/<id>/install-lib.sh`, and
   adapt the metadata, `install.sh`, NOTES.md and scenarios.
-- **Bump the version on every change.** `devcontainers/action` never
-  republishes an existing version, so a change under `src/<id>/` ships
-  only when that feature's `version` goes up
+- **Bump the version on every change.** A release never republishes a
+  feature version already in the registry, so a change under `src/<id>/`
+  ships, at the next full release, only when that feature's `version`
+  goes up
   ([ADR 0001](docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md));
   `scripts/check-version-bump.sh` checks it against `origin/main`.
 - **`.github/workflows/features.yml`.** On pull requests it validates every
@@ -250,22 +251,48 @@ library and [`test/README.md`](test/README.md) the scenario tests.
   version bump with full history. On pull requests and `main` it runs each
   feature's scenarios on four base images, natively on amd64 and arm64,
   plus the `_global` scenarios (see [`test/README.md`](test/README.md)).
-  On `main` it publishes every feature whose version is new and opens a PR
-  with the regenerated `src/<id>/README.md` files.
-- **Collection releases.** After a successful publish on `main`,
-  `features.yml`'s `release` job creates one GitHub Release for the whole
-  collection, tagged `v<x.y.z>` on the published commit
-  ([ADR 0004](docs/adrs/0004-collection-github-releases.md)). The bump is
-  the highest feature change since the previous `v<x.y.z>` tag: a feature
-  major bump or a removed feature bumps major, a minor bump or a new
-  feature bumps minor, a patch bump bumps patch, and no version change
-  means no release; the first is `v1.0.0`. The notes list every feature's
-  `id@version`, marking the changed ones. `scripts/collection-release.sh`
-  holds the rules. Consumers still pin each feature's own version, not
-  the collection tag. Base's `release.yml` is never run here.
+  Merging to `main` only tests; nothing is published. After a full
+  release (below), its `docs` job opens a PR with the regenerated
+  `src/<id>/README.md` files.
 - **Checks.** `prek run --all-files --hook-stage manual` runs shellcheck
   and the hooks in `scripts/` (install-lib drift, feature options, version
-  bump, and the collection release script's test).
+  bump).
+
+## Releasing the collection
+
+Releases are cut like in every craftainer repo: dispatch the **Release**
+workflow (`release.yml`, from base) on `main` with a `release_type`
+(`alpha`, `beta`, `rc` or `full`) and a `bump` (`major`, `minor`, `patch`
+or `none`). It tags the collection `v<x.y.z>` (with `-alpha.N` and so on
+for a pre-release) and runs this repo's `Makefile` targets, which call
+`scripts/release-features.sh`
+([ADR 0004](docs/adrs/0004-collection-github-releases.md)):
+
+- `make build` / `make release-assets` package every feature into `dist/`
+  (`devcontainer-feature-<id>.tgz` and `devcontainer-collection.json`),
+  attached to the GitHub Release on every channel.
+- `make publish` pushes the features to
+  `ghcr.io/craftainer/devcontainer-features/<id>` with
+  `devcontainer features publish`, **only for a `full` release**. alpha,
+  beta and rc releases push nothing, so consumers never resolve a
+  pre-release. Feature versions already in the registry are skipped.
+- `make release-check` (in the devcontainer) validates every
+  `devcontainer-feature.json` and checks `dist/` against `src/`.
+
+The collection tag versions the release as a whole; pick the bump by the
+largest feature change in it. Each feature's own version still comes from
+its `devcontainer-feature.json`, and that is what consumers pin, not the
+collection tag.
+
+Publishing needs, once, in the repository's Actions settings: the
+`OCI_REGISTRY` variable set to `ghcr.io`, and the `OCI_REGISTRY_USERNAME`
+(the token owner's GitHub login) and `OCI_REGISTRY_PASSWORD` (a classic
+personal access token with `write:packages`) secrets; `OCI_IMAGE_NAME` is
+optional and defaults to `craftainer/devcontainer-features`. Without
+`OCI_REGISTRY`, a full release publishes nothing and warns.
+
+To try the targets locally: `make build release-assets release-check`;
+`RELEASE_TAG=v1.0.0-rc.1 make publish` shows the pre-release skip.
 
 This repo is an instance of
 [`template-base`](https://github.com/craftainer/template-base). See
