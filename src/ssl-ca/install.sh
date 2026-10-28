@@ -308,6 +308,10 @@ for store in "${store_order[@]}"; do
         "$keytool" -importcert -noprompt -trustcacerts -alias "ssl-ca-${fp:0:16}" \
             -file "$pem" -keystore "$store" -storepass changeit >/dev/null \
             || die "keytool (${keytool}) cannot import $(openssl x509 -in "$pem" -noout -subject) into ${store}"
+        # The same certificate can sit in ${local_dir} twice (pre-placed
+        # and also passed in certs); a second import under the same alias
+        # would fail, so it now counts as present.
+        listing+=" ${fp_colons}"
         added=$((added + 1))
     done
     echo "ssl-ca: ${store} (keytool ${keytool}): ${added} imported, ${present} already present"
