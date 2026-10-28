@@ -1,0 +1,55 @@
+{
+  "option_channel": {
+    "//renovate": "datasource=docker depName=postgres",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-postgres-client": {
+        "version": "18.6"
+      }
+    }
+  },
+  "env_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-postgres-client": {}
+    }
+  },
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-postgres-client": {}
+    }
+  },
+  "archive_version": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-postgres-client": {
+        "pins_file": "/opt/pins/postgres.env"
+      }
+    }
+  },
+  "rejects_bad_pins": {
+    "//renovate": "datasource=docker depName=postgres",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-postgres-client": {
+        "version": "18.6"
+      }
+    }
+  }
+}
