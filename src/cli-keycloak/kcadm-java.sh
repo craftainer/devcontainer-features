@@ -7,8 +7,9 @@
 # it: $JAVA if set, else $JAVA_HOME/bin/java if JAVA_HOME is set, else java
 # on PATH. A bare name is looked up on PATH. The result is resolved with
 # readlink -f when it exists; otherwise the unresolved candidate is
-# printed, so a message can name it. Prints nothing when there is no
-# candidate at all (no JAVA, no JAVA_HOME, no java on PATH).
+# printed (a bare $JAVA not on PATH too), so a message can name it.
+# Prints nothing when there is no candidate at all (no JAVA, no JAVA_HOME,
+# no java on PATH).
 kcadm_java() {
     local j
     if [ -n "${JAVA:-}" ]; then
@@ -20,7 +21,14 @@ kcadm_java() {
     fi
     case "$j" in
         */*) ;;
-        *) j="$(command -v -- "$j" 2>/dev/null)" || return 0 ;;
+        *)
+            # A bare $JAVA not on PATH is printed as it is, so the message
+            # names it; a missing default java prints nothing.
+            if ! j="$(command -v -- "$j" 2>/dev/null)"; then
+                [ -z "${JAVA:-}" ] || printf '%s\n' "$JAVA"
+                return 0
+            fi
+            ;;
     esac
     if [ -e "$j" ]; then
         readlink -f -- "$j" 2>/dev/null || printf '%s\n' "$j"
@@ -35,7 +43,7 @@ kcadm_java() {
 # no SIGPIPE.
 java_major() {
     local out="" major=""
-    out="$(timeout 60 "$1" -XshowSettings:properties -version 2>&1)" || true
+    out="$(timeout -k 5 60 "$1" -XshowSettings:properties -version 2>&1)" || true
     major="$(printf '%s\n' "$out" | awk -F'= ' '
         /^[[:space:]]*java\.specification\.version =/ && m == "" {
             v = $2; sub(/^1\./, "", v); split(v, p, "."); m = p[1]

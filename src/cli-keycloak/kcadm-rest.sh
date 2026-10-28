@@ -12,7 +12,7 @@
 # printed as it is; a non-2xx reply goes to stderr and exits 1.
 set -euo pipefail
 
-if [[ $# -lt 2 || $# -gt 3 ]]; then
+if [[ $# -lt 2 || $# -gt 3 || $2 != /* ]]; then
     echo "Usage: kcadm METHOD PATH [JSON_BODY]" >&2
     echo "Example: kcadm GET /admin/realms/master/users" >&2
     exit 1
@@ -36,9 +36,13 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 # show <file> [>&2]: prints <file> pretty-printed if it is JSON, else as
-# it is.
+# it is. Parsing is checked first, so a failed write while pretty-printing
+# never falls back to printing the body a second time.
 show() {
-    if [[ -s "$1" ]] && ! python3 -I -m json.tool "$1" 2>/dev/null; then
+    [[ -s "$1" ]] || return 0
+    if python3 -I -c 'import json, sys; json.load(open(sys.argv[1], "rb"))' "$1" 2>/dev/null; then
+        python3 -I -m json.tool --no-ensure-ascii "$1"
+    else
         cat "$1"
         [[ -z "$(tail -c 1 "$1")" ]] || echo
     fi
