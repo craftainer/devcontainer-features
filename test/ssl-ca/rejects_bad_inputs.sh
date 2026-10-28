@@ -126,6 +126,18 @@ nothing_supplied() {
 }
 check "nothing supplied fails, naming every channel" nothing_supplied
 
+# A pins_file option naming a missing file warns, even though certs
+# supplies a certificate and the install succeeds.
+missing_pins_file_warns() {
+    local out status=0
+    out="$(rerun_install PINS_FILE=/nonexistent/pins.env \
+        CERTS="$(cat "${local_dir}/ssl-ca-${STATIC_CA_SHA256:0:16}.crt")")" || status=$?
+    printf '%s\n' "$out"
+    [ "$status" -eq 0 ] || { echo "install.sh failed" >&2; return 1; }
+    grep -qF 'ssl-ca: warning: the pins_file option names /nonexistent/pins.env, which doesn'"'"'t exist' <<<"$out"
+}
+check "a pins_file option naming a missing file warns, and certs still install" missing_pins_file_warns
+
 rm -rf "$scratch"
 
 reportResults

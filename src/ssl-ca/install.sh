@@ -14,7 +14,10 @@
 # the option, then SSL_CA_<OPTION> in the image environment, then the
 # pins file; the first channel that sets a value wins. urls and sha256s
 # come from the same channel, as a version and its sha do. With nothing
-# supplied and no *.crt present, the install fails. containerEnv (in
+# supplied and no *.crt present, the install fails. The inline and
+# pre-placed certificates are installed before any URL is fetched, so a
+# TLS-intercepting proxy's CA given that way also covers the downloads.
+# containerEnv (in
 # devcontainer-feature.json) points the per-tool CA variables at the
 # system bundle this script updates.
 set -euo pipefail
@@ -34,6 +37,12 @@ il_require_root
 pins_file="${PINS_FILE:-/etc/devcontainer-features/pins.env}"
 if [ -f "$pins_file" ] && [ ! -r "$pins_file" ]; then
     die "pins file ${pins_file} is not readable"
+fi
+# A pins_file the consumer named but that isn't there is most likely a
+# typo or a missing COPY; say so even when another channel supplies the
+# certificates (with nothing at all, the error below says it too).
+if [ -n "${PINS_FILE:-}" ] && [ ! -e "$pins_file" ]; then
+    echo "ssl-ca: warning: the pins_file option names ${pins_file}, which doesn't exist; not reading a pins file" >&2
 fi
 
 # pins_value <KEY>: prints SSL_CA_<KEY> from the pins file, or nothing.
@@ -200,16 +209,31 @@ fingerprint() {
     printf '%s' "${fp,,}"
 }
 
+# install_staged: moves the certificates staged in ${tmp}/new into
+# ${local_dir} and runs update-ca-certificates.
+install_staged() {
+    local f
+    install -d -m 0755 "$local_dir"
+    if [ -d "${tmp}/new" ]; then
+        for f in "${tmp}/new"/*.crt; do
+            install -m 0644 "$f" "${local_dir}/$(basename "$f")"
+        done
+        rm -rf "${tmp}/new"
+    fi
+    update-ca-certificates || die "update-ca-certificates failed"
+}
+
+# Two passes. The inline and pre-placed certificates go into the trust
+# store first, and only then are the URLs fetched (il_fetch_verified's
+# curl uses the system bundle), so an https URL behind a TLS-intercepting
+# proxy works when that proxy's CA comes through certs or a pre-placed
+# .crt. The URL list itself was checked above, before any download.
 split_seq=0
 if [ -n "$certs" ]; then
     # \n escapes, as from a single-line ${localEnv:...} or pins-file value.
     printf '%s\n' "${certs//\\n/$'\n'}" >"${tmp}/certs.pem"
     add_certs "${tmp}/certs.pem" "$certs_from"
 fi
-for i in "${!url_list[@]}"; do
-    il_fetch_verified "${url_list[$i]}" "${sha_list[$i]}" "${tmp}/url-${i}"
-    add_certs "${tmp}/url-${i}" "${url_list[$i]}" 1
-done
 for f in "${preplaced[@]}"; do
     # Validated, not staged: they stay where the consumer put them.
     # update-ca-certificates skips (with only a warning) a .crt that isn't
@@ -225,14 +249,17 @@ for f in "${preplaced[@]}"; do
         || die "${f} is not a valid X.509 certificate"
     echo "ssl-ca: keeping ${f}"
 done
-
-install -d -m 0755 "$local_dir"
-if [ -d "${tmp}/new" ]; then
-    for f in "${tmp}/new"/*.crt; do
-        install -m 0644 "$f" "${local_dir}/$(basename "$f")"
-    done
+if [ -n "$certs" ] || [ "${#preplaced[@]}" -gt 0 ]; then
+    install_staged
 fi
-update-ca-certificates || die "update-ca-certificates failed"
+
+if [ "${#url_list[@]}" -gt 0 ]; then
+    for i in "${!url_list[@]}"; do
+        il_fetch_verified "${url_list[$i]}" "${sha_list[$i]}" "${tmp}/url-${i}"
+        add_certs "${tmp}/url-${i}" "${url_list[$i]}" 1
+    done
+    install_staged
+fi
 
 # Every certificate in ${local_dir} (staged or pre-placed), one per file,
 # for the bundle check and the Java import.
