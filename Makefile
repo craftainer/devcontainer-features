@@ -36,7 +36,9 @@ release-assets:
 
 # Host runner, per arch (one leg): `devcontainer features publish` to
 # $(OCI_REGISTRY)/$(OCI_IMAGE_NAME or GITHUB_REPOSITORY)/<id>, only for a full
-# release; a pre-release, or no OCI_REGISTRY, skips cleanly. Re-runnable: the
+# release; a pre-release, or no OCI_REGISTRY, skips cleanly. Runs
+# release-check's checks first (this runs before release-check, and a pushed
+# version can't be replaced) and only on the amd64 leg. Re-runnable: the
 # CLI skips feature versions already in the registry.
 publish:
 	scripts/release-features.sh publish

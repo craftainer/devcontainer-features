@@ -278,6 +278,8 @@ for a pre-release) and runs this repo's `Makefile` targets, which call
   pre-release. Feature versions already in the registry are skipped.
 - `make release-check` (in the devcontainer) validates every
   `devcontainer-feature.json` and checks `dist/` against `src/`.
+  `make publish` runs the same checks first, since it runs before
+  `release-check` and a pushed feature version can't be replaced.
 
 The collection tag versions the release as a whole; pick the bump by the
 largest feature change in it. Each feature's own version still comes from

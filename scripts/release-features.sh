@@ -10,7 +10,8 @@
 #   release-features.sh check    validate every devcontainer-feature.json, run
 #                                the feature-options and install-lib drift
 #                                checks, and check dist/ against src/
-#   release-features.sh publish  push every feature to the OCI registry with
+#   release-features.sh publish  run the checks above, then push every feature
+#                                to the OCI registry with
 #                                `devcontainer features publish`, only for a
 #                                full release (no pre-release suffix)
 #
@@ -186,16 +187,23 @@ cmd_assets() {
     ls -l "$DIST"
 }
 
-cmd_check() {
+# The release check proper: release-check runs it, and publish runs it first
+# too, since publish runs in build's job, before release-check, and a pushed
+# feature version can't be replaced. Needs load_ids first.
+run_checks() {
     local status=0
     command -v jq >/dev/null 2>&1 || die "jq is required"
-    load_ids
     validate_metadata || status=1
     scripts/check-feature-options.sh || status=1
     scripts/check-install-lib-drift.sh || status=1
     check_dist || status=1
     [ "$status" -eq 0 ] || die "release check failed"
     echo "release-features: ${#IDS[@]} features valid; ${DIST}/ matches src/."
+}
+
+cmd_check() {
+    load_ids
+    run_checks
 }
 
 cmd_publish() {
@@ -231,7 +239,12 @@ cmd_publish() {
     [ -n "$namespace" ] || die "set OCI_IMAGE_NAME or GITHUB_REPOSITORY (owner/repo) for the feature namespace"
     namespace="$(printf '%s' "$namespace" | tr '[:upper:]' '[:lower:]')"
 
+    # publish runs once per release-arches leg; the collection is pushed once.
+    # With more than one arch, the legs would race on the same feature tags.
+    [ "${RELEASE_ARCH:-amd64}" = amd64 ] || die "publish runs on the amd64 leg only (RELEASE_ARCH=${RELEASE_ARCH}); release-arches must print [\"amd64\"]"
+
     load_ids
+    run_checks
     resolve_cli
     echo "release-features: publishing release ${version}'s features to ${OCI_REGISTRY}/${namespace}/<id> (versions already in the registry are skipped)."
     # The credentials reach the CLI through the environment only, never its

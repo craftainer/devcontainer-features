@@ -57,7 +57,11 @@ its `Makefile` contract with `scripts/release-features.sh`:
   It authenticates with the `OCI_REGISTRY_USERNAME` /
   `OCI_REGISTRY_PASSWORD` secrets through the CLI's
   `DEVCONTAINERS_OCI_AUTH` environment variable; on `ghcr.io` that is a
-  classic personal access token with `write:packages`.
+  classic personal access token with `write:packages`. `release.yml` runs
+  `publish` in the `build` job, before `release-check`, and a pushed
+  feature version can't be replaced, so `publish` runs `release-check`'s
+  checks itself first and pushes nothing if they fail. It also refuses any
+  leg but amd64, so a second arch can't race the first on the same tags.
 - **`release-check`** (in the devcontainer) validates every
   `devcontainer-feature.json` (id matches its folder, name, SemVer version,
   option types and defaults), runs the feature-options and install-lib
@@ -67,8 +71,9 @@ its `Makefile` contract with `scripts/release-features.sh`:
   no-ops: there's no built binary to scan, nothing per arch to combine,
   and no package registry.
 - **`features.yml`** no longer publishes. It validates and tests on pull
-  requests and `main`, and after a successful `Release` run on `main` whose
-  commit has a full (non-pre-release) GitHub Release, its `docs` job opens
+  requests and `main`, and after a successful, dispatched
+  `.github/workflows/release.yml` run on `main` whose commit has a full
+  (non-pre-release) GitHub Release, with `OCI_REGISTRY` set, its `docs` job opens
   the PR with the `src/<id>/README.md` files that `devcontainers/action`'s
   generate-docs regenerates. That job lives there, not in `finalize`,
   because `release.yml`'s token has no `pull-requests: write`.

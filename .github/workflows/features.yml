@@ -230,13 +230,19 @@ jobs:
   # on main that succeeded and whose commit carries a published, non-pre-release
   # GitHub Release (release.yml creates it with --target <sha>). A PR opened
   # with GITHUB_TOKEN doesn't trigger workflows, so its checks have to be
-  # started by hand (or by pushing to its branch).
+  # started by hand (or by pushing to its branch). The guards: only base's
+  # release.yml (by path, not just its name), dispatched by hand, from main
+  # in this repo, and only when OCI_REGISTRY is set, since without it a full
+  # release publishes nothing (scripts/release-features.sh).
   docs:
     if: >-
       github.event_name == 'workflow_run'
+      && github.event.workflow_run.path == '.github/workflows/release.yml'
+      && github.event.workflow_run.event == 'workflow_dispatch'
       && github.event.workflow_run.conclusion == 'success'
       && github.event.workflow_run.head_branch == 'main'
       && github.event.workflow_run.head_repository.full_name == github.repository
+      && vars.OCI_REGISTRY != ''
     # renovate: datasource=github-runners depName=ubuntu
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-24.04' }}
     timeout-minutes: 10
@@ -257,9 +263,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          # awk, not head: it reads all of jq's output, so jq never gets
+          # SIGPIPE (which pipefail would turn into a failed step).
           tag="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" |
             jq -r --arg sha "$HEAD_SHA" '.[] | select(.draft == false and .prerelease == false and .target_commitish == $sha) | .tag_name' |
-            head -n 1)"
+            awk 'NR == 1')"
           if [ -z "$tag" ]; then
             echo "No full release at ${HEAD_SHA}; a pre-release publishes nothing, so the READMEs stay as they are."
           else
@@ -293,8 +301,15 @@ jobs:
             exit 0
           fi
           branch="automated-docs-update-${TAG}"
+          # A re-run of the Release run fires this job again: skip when the
+          # branch exists, or a PR from it was ever opened (its branch may be
+          # deleted after the merge).
           if git ls-remote --exit-code --heads origin "$branch" >/dev/null; then
             echo "Branch ${branch} already exists (a re-run); not opening another PR."
+            exit 0
+          fi
+          if [ "$(gh pr list --head "$branch" --state all --json number --jq length)" != 0 ]; then
+            echo "A PR from ${branch} already exists (a re-run); not opening another."
             exit 0
           fi
           git config user.name 'github-actions[bot]'
