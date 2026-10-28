@@ -5,7 +5,10 @@
 Accepted. Amends [0001](0001-one-collection-repo-released-with-devcontainers-action.md):
 features are published by base's `release.yml` through the `Makefile`
 contract, on a full collection release, not by `devcontainers/action` on
-every push to `main`.
+every push to `main`. Partly superseded by
+[0005](0005-publish-to-ghcr-with-github-token.md): on `ghcr.io`, `publish`
+authenticates with the job's `GITHUB_TOKEN` when the registry secrets are
+empty, so the secrets are no longer required there.
 
 ## Context
 
