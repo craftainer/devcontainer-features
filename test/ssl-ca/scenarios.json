@@ -1,0 +1,75 @@
+{
+  "option_certs": {
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "ssl-ca": {
+        "certs": "-----BEGIN CERTIFICATE-----\nMIIB5zCCAY2gAwIBAgIUem+hVMRmjP9oQBFrb4BaSFedXxgwCgYIKoZIzj0EAwIw\nQDE+MDwGA1UEAww1c3NsLWNhIGZlYXR1cmUgc3RhdGljIHRlc3QgQ0EgKG5vIHBy\naXZhdGUga2V5IGV4aXN0cykwIBcNMjYxMDI4MTAwNjI4WhgPMjEyNjEwMDQxMDA2\nMjhaMEAxPjA8BgNVBAMMNXNzbC1jYSBmZWF0dXJlIHN0YXRpYyB0ZXN0IENBIChu\nbyBwcml2YXRlIGtleSBleGlzdHMpMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\nU6A5kClbtYLiCeW53f7/kxeTGltjlOAmi2hhLSPiQvsBR17SNh87+wNLagXWwueH\ntX/iFUVdKM5M2oXDY3ZKcKNjMGEwHQYDVR0OBBYEFM6/JyqXDfWyRgp+y8PYQC/2\nHpJkMB8GA1UdIwQYMBaAFM6/JyqXDfWyRgp+y8PYQC/2HpJkMA8GA1UdEwEB/wQF\nMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMCA0gAMEUCIH2xKYmXtJXY\nF4l9F0wcBMiHe/AdY4YUHU6NXC+UC8+pAiEAr0FlI8gFQGboVaW+hv7a2ycMyKfw\nXJE0P7UkJQRg2ZU=\n-----END CERTIFICATE-----\n"
+      }
+    }
+  },
+  "env_certs": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "ssl-ca": {}
+    }
+  },
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "ssl-ca": {}
+    }
+  },
+  "url_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "ssl-ca": {
+        "pins_file": "/opt/ssl-ca-test/urls.env"
+      }
+    }
+  },
+  "preplaced_crt": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "ssl-ca": {}
+    }
+  },
+  "java": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "ssl-ca": {}
+    }
+  },
+  "rejects_bad_inputs": {
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "ssl-ca": {
+        "certs": "-----BEGIN CERTIFICATE-----\\nMIIB5zCCAY2gAwIBAgIUem+hVMRmjP9oQBFrb4BaSFedXxgwCgYIKoZIzj0EAwIw\\nQDE+MDwGA1UEAww1c3NsLWNhIGZlYXR1cmUgc3RhdGljIHRlc3QgQ0EgKG5vIHBy\\naXZhdGUga2V5IGV4aXN0cykwIBcNMjYxMDI4MTAwNjI4WhgPMjEyNjEwMDQxMDA2\\nMjhaMEAxPjA8BgNVBAMMNXNzbC1jYSBmZWF0dXJlIHN0YXRpYyB0ZXN0IENBIChu\\nbyBwcml2YXRlIGtleSBleGlzdHMpMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE\\nU6A5kClbtYLiCeW53f7/kxeTGltjlOAmi2hhLSPiQvsBR17SNh87+wNLagXWwueH\\ntX/iFUVdKM5M2oXDY3ZKcKNjMGEwHQYDVR0OBBYEFM6/JyqXDfWyRgp+y8PYQC/2\\nHpJkMB8GA1UdIwQYMBaAFM6/JyqXDfWyRgp+y8PYQC/2HpJkMA8GA1UdEwEB/wQF\\nMAMBAf8wDgYDVR0PAQH/BAQDAgEGMAoGCCqGSM49BAMCA0gAMEUCIH2xKYmXtJXY\\nF4l9F0wcBMiHe/AdY4YUHU6NXC+UC8+pAiEAr0FlI8gFQGboVaW+hv7a2ycMyKfw\\nXJE0P7UkJQRg2ZU=\\n-----END CERTIFICATE-----"
+      }
+    }
+  }
+}

@@ -249,6 +249,13 @@ the order yourself with `overrideFeatureInstallOrder` in these two cases.
 
 ## Corporate CAs at run time
 
+`ssl-ca` sets twelve CA variables in `containerEnv` (the full list is in
+its NOTES.md): `NODE_EXTRA_CA_CERTS`, `SSL_CERT_FILE` and seven other
+per-tool variables point at the system bundle
+`/etc/ssl/certs/ca-certificates.crt`, `SSL_CERT_DIR` at `/etc/ssl/certs`,
+and `NODE_USE_SYSTEM_CA` and `UV_NATIVE_TLS` are `1`. The one that
+matters here is `NODE_EXTRA_CA_CERTS`.
+
 The native binary has no Node.js installation behind it, so `ssl-ca`'s
 `NODE_USE_SYSTEM_CA=1` doesn't apply to it. It doesn't need to: per
 Anthropic's
