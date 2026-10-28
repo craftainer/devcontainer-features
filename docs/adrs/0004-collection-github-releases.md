@@ -5,7 +5,9 @@
 Accepted. Amends [0001](0001-one-collection-repo-released-with-devcontainers-action.md):
 features are published by base's `release.yml` through the `Makefile`
 contract, on a full collection release, not by `devcontainers/action` on
-every push to `main`.
+every push to `main`. Amended 2026-10-28 (see "Amendment: publish to GHCR
+with `GITHUB_TOKEN`" below): on `ghcr.io`, `publish` authenticates with the
+job's `GITHUB_TOKEN` when the registry secrets are empty.
 
 ## Context
 
@@ -103,3 +105,34 @@ its `Makefile` contract with `scripts/release-features.sh`:
   public by hand once.
 - `devcontainers/action` no longer tags `<id>_v<version>` in git; the
   collection's `v<x.y.z>` tags and the registry's own version tags remain.
+
+## Amendment: publish to GHCR with `GITHUB_TOKEN` (2026-10-28)
+
+The Decision's `publish` bullet authenticates only with the
+`OCI_REGISTRY_USERNAME` / `OCI_REGISTRY_PASSWORD` secrets, on `ghcr.io` a
+classic personal access token, because `release.yml`'s `build` job had
+`contents: write` only. Base's `release.yml` now grants that job
+`packages: write`, and GitHub's guidance ("Publishing and installing a
+package with GitHub Actions") recommends the job's `GITHUB_TOKEN` over a
+personal access token for pushing to the repository's own GHCR packages.
+
+So `publish` now picks its credential this way, still passing it to the
+CLI only through `DEVCONTAINERS_OCI_AUTH` and still rejecting a `|` or `,`
+in any part of it:
+
+- Either registry secret set: both secrets, as before (one alone fails).
+  Explicit secrets always win.
+- Neither set and `OCI_REGISTRY` is `ghcr.io`: `GITHUB_TOKEN` as
+  `GITHUB_ACTOR`. Without `GITHUB_TOKEN` it fails, naming the
+  `packages: write` the `build` job needs.
+- Neither set and any other registry: fails, as before.
+
+`OCI_REGISTRY` stays the opt-in: unset still skips with a warning, a
+pre-release still pushes nothing, and only the amd64 leg publishes. On
+GHCR, publishing now needs only the `OCI_REGISTRY` variable, once this
+repo's synced `release.yml` carries `packages: write`; until template-sync
+brings it in, the registry denies a full release's push when the secrets
+are empty, and `publish` fails without pushing anything. A features-only
+publish job triggered by `workflow_run` was considered instead and
+rejected: it would split this repo's release path from every other
+craftainer repo's.

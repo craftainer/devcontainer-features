@@ -286,11 +286,15 @@ largest feature change in it. Each feature's own version still comes from
 its `devcontainer-feature.json`, and that is what consumers pin, not the
 collection tag.
 
-Publishing needs, once, in the repository's Actions settings: the
-`OCI_REGISTRY` variable set to `ghcr.io`, and the `OCI_REGISTRY_USERNAME`
-(the token owner's GitHub login) and `OCI_REGISTRY_PASSWORD` (a classic
-personal access token with `write:packages`) secrets; `OCI_IMAGE_NAME` is
-optional and defaults to `craftainer/devcontainer-features`. Without
+Publishing needs, once, in the repository's Actions settings, only the
+`OCI_REGISTRY` variable set to `ghcr.io`; no secrets. `make publish` then
+pushes with the release job's `GITHUB_TOKEN` (as `GITHUB_ACTOR`), which
+works once template-sync has brought in a base `release.yml` whose `build`
+job grants `packages: write`; until then GHCR denies the push and
+`make publish` fails. `OCI_IMAGE_NAME` is optional and defaults to
+`craftainer/devcontainer-features`. The `OCI_REGISTRY_USERNAME` and
+`OCI_REGISTRY_PASSWORD` secrets, when set, take precedence (both are then
+required), and are needed for any registry other than `ghcr.io`. Without
 `OCI_REGISTRY`, a full release publishes nothing and warns.
 
 To try the targets locally: `make build release-assets release-check`;

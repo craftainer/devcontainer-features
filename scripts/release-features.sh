@@ -15,6 +15,13 @@
 #                                `devcontainer features publish`, only for a
 #                                full release (no pre-release suffix)
 #
+# publish authenticates with the OCI_REGISTRY_USERNAME/OCI_REGISTRY_PASSWORD
+# secrets when either is set (both are then required). With neither set and
+# OCI_REGISTRY=ghcr.io, it uses the job's GITHUB_TOKEN as GITHUB_ACTOR, which
+# needs release.yml's build job to grant `packages: write` (template-sync
+# brings that in from the template-base release that adds it). Any other
+# registry needs the secrets.
+#
 # The Dev Container CLI is the version pinned in
 # scripts/develop.d/10-devcontainer-cli.sh (one pin, which Renovate bumps). A
 # `devcontainer` on PATH (or DEVCONTAINER_CLI) is used when it is that version;
@@ -207,7 +214,7 @@ cmd_check() {
 }
 
 cmd_publish() {
-    local version namespace
+    local version namespace registry_user registry_token auth_source
     version="${RELEASE_VERSION:-${RELEASE_TAG:-}}"
     version="${version#v}"
 
@@ -219,7 +226,7 @@ cmd_publish() {
     fi
     if [ -z "${OCI_REGISTRY:-}" ]; then
         if [ -n "$version" ]; then
-            echo "::warning::OCI_REGISTRY is not set, so full release ${version} publishes no features; set the OCI_REGISTRY variable and the OCI_REGISTRY_USERNAME/OCI_REGISTRY_PASSWORD secrets (README.md, \"Releasing the collection\"), then re-run this run's build job to publish them."
+            echo "::warning::OCI_REGISTRY is not set, so full release ${version} publishes no features; set the OCI_REGISTRY variable (ghcr.io needs no secrets; any other registry needs the OCI_REGISTRY_USERNAME/OCI_REGISTRY_PASSWORD secrets; README.md, \"Releasing the collection\"), then re-run this run's build job to publish them."
         fi
         echo "release-features: OCI_REGISTRY not set -- skipping publish."
         return 0
@@ -227,12 +234,24 @@ cmd_publish() {
     [ -n "$version" ] || die "RELEASE_VERSION (or RELEASE_TAG) is not set"
     [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "'${version}' is not a full release version (x.y.z)"
 
-    [ -n "${OCI_REGISTRY_USERNAME:-}" ] || die "OCI_REGISTRY is set but the OCI_REGISTRY_USERNAME secret is empty"
-    [ -n "${OCI_REGISTRY_PASSWORD:-}" ] || die "OCI_REGISTRY is set but the OCI_REGISTRY_PASSWORD secret is empty"
+    # Explicit secrets win; on ghcr.io without them, the job's GITHUB_TOKEN.
+    if [ -n "${OCI_REGISTRY_USERNAME:-}" ] || [ -n "${OCI_REGISTRY_PASSWORD:-}" ]; then
+        [ -n "${OCI_REGISTRY_USERNAME:-}" ] || die "OCI_REGISTRY is set but the OCI_REGISTRY_USERNAME secret is empty"
+        [ -n "${OCI_REGISTRY_PASSWORD:-}" ] || die "OCI_REGISTRY is set but the OCI_REGISTRY_PASSWORD secret is empty"
+        registry_user="$OCI_REGISTRY_USERNAME" registry_token="$OCI_REGISTRY_PASSWORD"
+        auth_source="the OCI_REGISTRY_USERNAME/OCI_REGISTRY_PASSWORD secrets"
+    elif [ "$OCI_REGISTRY" = ghcr.io ]; then
+        [ -n "${GITHUB_TOKEN:-}" ] || die "OCI_REGISTRY is ghcr.io and the OCI_REGISTRY_USERNAME/OCI_REGISTRY_PASSWORD secrets are empty, but GITHUB_TOKEN is not set either; release.yml's build job needs \`permissions: packages: write\` and GITHUB_TOKEN in its env (template-sync it from the template-base release that adds it), or set both secrets"
+        [ -n "${GITHUB_ACTOR:-}" ] || die "OCI_REGISTRY is ghcr.io and publish would use GITHUB_TOKEN, but GITHUB_ACTOR is not set"
+        registry_user="$GITHUB_ACTOR" registry_token="$GITHUB_TOKEN"
+        auth_source="GITHUB_TOKEN as ${GITHUB_ACTOR} (needs packages: write on release.yml's build job)"
+    else
+        die "OCI_REGISTRY is ${OCI_REGISTRY}, not ghcr.io, so the OCI_REGISTRY_USERNAME and OCI_REGISTRY_PASSWORD secrets are required; both are empty"
+    fi
     # DEVCONTAINERS_OCI_AUTH is "registry|user|token[,...]"; a '|' or ',' in
     # a value would split it in the wrong place.
-    case "${OCI_REGISTRY}${OCI_REGISTRY_USERNAME}${OCI_REGISTRY_PASSWORD}" in
-        *'|'* | *,*) die "OCI_REGISTRY, OCI_REGISTRY_USERNAME and OCI_REGISTRY_PASSWORD must not contain '|' or ','" ;;
+    case "${OCI_REGISTRY}${registry_user}${registry_token}" in
+        *'|'* | *,*) die "OCI_REGISTRY and the registry user and token must not contain '|' or ','" ;;
     esac
 
     namespace="${OCI_IMAGE_NAME:-${GITHUB_REPOSITORY:-}}"
@@ -246,11 +265,11 @@ cmd_publish() {
     load_ids
     run_checks
     resolve_cli
-    echo "release-features: publishing release ${version}'s features to ${OCI_REGISTRY}/${namespace}/<id> (versions already in the registry are skipped)."
+    echo "release-features: publishing release ${version}'s features to ${OCI_REGISTRY}/${namespace}/<id> (versions already in the registry are skipped), authenticating with ${auth_source}."
     # The credentials reach the CLI through the environment only, never its
-    # command line. GITHUB_TOKEN is dropped so the CLI can't fall back to the
-    # job's token (contents: write, no packages: write) for ghcr.io.
-    DEVCONTAINERS_OCI_AUTH="${OCI_REGISTRY}|${OCI_REGISTRY_USERNAME}|${OCI_REGISTRY_PASSWORD}" \
+    # command line. GITHUB_TOKEN is dropped either way, so the only
+    # credential the CLI sees is the one chosen above, in DEVCONTAINERS_OCI_AUTH.
+    DEVCONTAINERS_OCI_AUTH="${OCI_REGISTRY}|${registry_user}|${registry_token}" \
         env -u GITHUB_TOKEN -u OCI_REGISTRY_PASSWORD \
         "$DEVCONTAINER" features publish src --registry "$OCI_REGISTRY" --namespace "$namespace" --log-level info
 }
