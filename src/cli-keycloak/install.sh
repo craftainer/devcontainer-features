@@ -122,6 +122,17 @@ if ! tar -xzf "${tmp}/${asset}" -C "${tmp}/stage" --no-same-owner --strip-compon
     echo "cli-keycloak: ${asset}: extraction failed or the tarball lacks bin/kcadm.sh / bin/client/" >&2
     exit 1
 fi
+# Keycloak is Apache-2.0; its LICENSE.txt comes from the same verified
+# tarball. The third-party notices of the bundled client libraries travel
+# inside their jars (META-INF/) in bin/client/. A release without the file
+# installs anyway.
+mkdir "${tmp}/doc"
+if tar -xzf "${tmp}/${asset}" -C "${tmp}/doc" --no-same-owner --strip-components=1 \
+    "keycloak-${IL_VERSION}/LICENSE.txt" 2>/dev/null; then
+    install -D -m 0644 "${tmp}/doc/LICENSE.txt" /usr/local/share/doc/keycloak-cli/LICENSE.txt
+else
+    echo "cli-keycloak: warning: ${asset} has no LICENSE.txt; no license notice installed" >&2
+fi
 rm -f "${tmp}/${asset}"
 chmod -R u=rwX,go=rX "${tmp}/stage"
 chmod 0755 "${tmp}/stage/kcadm.sh"

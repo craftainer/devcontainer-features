@@ -9,5 +9,7 @@ source dev-container-features-test-lib
 source "$(dirname "$0")/rustfs-checks.sh"
 
 expect_installed "$(scenario_version option_channel)"
+expect_license_notice /usr/local/share/doc/rustfs-cli/LICENSE-MIT "Permission is hereby granted"
+expect_license_notice /usr/local/share/doc/rustfs-cli/LICENSE-APACHE "Apache License"
 
 reportResults

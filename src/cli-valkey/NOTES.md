@@ -4,8 +4,9 @@
 binary release on [valkey.io/download](https://valkey.io/download/). The
 release tarball (about 40 MB) also carries `valkey-server`,
 `valkey-sentinel`, `valkey-benchmark` and the check tools; the feature
-extracts only `bin/valkey-cli` and installs nothing else. No `redis-cli`
-alias is created.
+extracts only `bin/valkey-cli` and the license notice (see
+[License](#license)) and installs no other binary. No `redis-cli` alias is
+created.
 
 The feature always uses upstream's Ubuntu 24.04 (`noble`) build, on Debian
 too. That build needs glibc 2.38 or later and OpenSSL 3 (`libssl.so.3`,
@@ -166,3 +167,7 @@ services:
 Debian 13 and Ubuntu 24.04 or later, on amd64 and arm64 (see "What it
 installs" for the glibc and OpenSSL requirement). The install needs `tar`,
 and installs `curl`, `ca-certificates` and `libssl3t64` if any is missing.
+
+## License
+
+Valkey is BSD-3-Clause ([COPYING](https://github.com/valkey-io/valkey/blob/unstable/COPYING)); the feature installs the notice from the release tarball (`share/LICENSE`) as `/usr/local/share/doc/valkey-cli/LICENSE`.

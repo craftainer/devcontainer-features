@@ -141,3 +141,13 @@ _valkey_server_smoke_in() {
     echo "VALKEYCLI_AUTH over a wrong REDISCLI_AUTH: ${out}"
     [ "$out" = PONG ] || return 1
 }
+
+_license_notice_ok() {
+    [ "$(stat -c '%a %u' "$1")" = "644 0" ] && grep -qF "$2" "$1"
+}
+
+# expect_license_notice <file> <text>: <file> is a root-owned, mode 0644
+# license notice that contains <text>.
+expect_license_notice() {
+    check "license notice $1 is mode 0644, owned by root, and has '$2'" _license_notice_ok "$1" "$2"
+}

@@ -138,3 +138,7 @@ services:
 
 Debian and Ubuntu, on amd64 and arm64. The install needs `tar`, and
 installs `curl` and `ca-certificates` if `curl` is missing.
+
+## License
+
+s5cmd is MIT-licensed ([LICENSE](https://github.com/peak/s5cmd/blob/master/LICENSE)); the feature installs the notice from the release tarball as `/usr/local/share/doc/s5cmd/LICENSE`.

@@ -10,13 +10,12 @@ needs no Node.js. The feature:
   of scope) and checks it against your sha256;
 - creates `~/.claude` for the remote user, mode `0700` (see
   [Keeping the login across rebuilds](#keeping-the-login-across-rebuilds));
-- sets `DISABLE_AUTOUPDATER=1` in the container environment, so Claude
-  Code doesn't update itself away from your pin (see
-  [Bumping the version](#bumping-the-version)).
+- sets `DISABLE_AUTOUPDATER=1` and `DISABLE_UPDATES=1` in the container
+  environment, so Claude Code doesn't update itself away from your pin
+  (see [Bumping the version](#bumping-the-version)).
 
 It declares no mounts and doesn't set `CLAUDE_CONFIG_DIR`: where Claude
 Code's state and credentials live is your choice, not the feature's.
-
 ## Pinning the version
 
 This feature has no default version. You choose the Claude Code release
@@ -123,29 +122,21 @@ path in the image:
 ## Bumping the version
 
 Claude Code normally updates itself in the background. This feature sets
-`DISABLE_AUTOUPDATER=1` in `containerEnv`, Anthropic's documented switch
-for that ([environment variables](https://code.claude.com/docs/en/env-vars)),
-so the version you pinned is the version that runs. To move to a newer
-release, change the pin: put the new version and its two shas from that
-release's `manifest.json` wherever you set the pin, and rebuild the
-container. The `Auto-updates` line of `claude doctor` shows
-`disabled (set by env: DISABLE_AUTOUPDATER)`.
+two of Anthropic's documented switches in `containerEnv`
+([environment variables](https://code.claude.com/docs/en/env-vars)), so
+the version you pinned is the version that runs:
 
-`DISABLE_AUTOUPDATER` stops only the background updater. `claude update`
-and `claude install` still work. They manage the native installer's own
-per-user layout (versions under `~/.local/share/claude/versions/`, a
-launcher at `~/.local/bin/claude`), not this feature's
-`/usr/local/bin/claude`, so they can leave a second copy that shadows the
-pinned one wherever `~/.local/bin` comes first on `PATH`. Don't use them in
-this container. To block them
-too, set Anthropic's stricter `DISABLE_UPDATES` in your own
-`devcontainer.json`:
+- `DISABLE_AUTOUPDATER=1` stops the background updater;
+- `DISABLE_UPDATES=1` also blocks the manual `claude update` and
+  `claude install`. Those manage the native installer's own per-user
+  layout (versions under `~/.local/share/claude/versions/`, a launcher at
+  `~/.local/bin/claude`), not this feature's `/usr/local/bin/claude`, so
+  they would leave a second copy that shadows the pinned one wherever
+  `~/.local/bin` comes first on `PATH`.
 
-```jsonc
-"containerEnv": {
-  "DISABLE_UPDATES": "1"
-}
-```
+To move to a newer release, change the pin: put the new version and its
+two shas from that release's `manifest.json` wherever you set the pin,
+and rebuild the container.
 
 ## Keeping the login across rebuilds
 
@@ -273,3 +264,7 @@ with it your CA.
 
 Debian and Ubuntu (glibc), on amd64 and arm64. The install adds
 `curl` and `ca-certificates` if either is missing.
+
+## License
+
+Claude Code is proprietary and its binary ships no license file, so the feature installs none; your use is subject to Anthropic's [Commercial Terms of Service](https://www.anthropic.com/legal/commercial-terms) or, on a Free, Pro or Max plan, its [Consumer Terms](https://www.anthropic.com/legal/consumer-terms) (see [Legal and compliance](https://code.claude.com/docs/en/legal-and-compliance)).

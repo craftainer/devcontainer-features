@@ -35,4 +35,12 @@ il_fetch_verified "$url" "$IL_SHA256" "${tmp}/${asset}"
 tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner s5cmd
 il_install_bin "${tmp}/s5cmd" s5cmd
 
+# s5cmd is MIT-licensed; its notice comes from the same verified tarball.
+# A release without it (none known) installs the binary anyway.
+if tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner LICENSE 2>/dev/null; then
+    install -D -m 0644 "${tmp}/LICENSE" /usr/local/share/doc/s5cmd/LICENSE
+else
+    echo "cli-s5cmd: warning: ${asset} has no LICENSE; no license notice installed" >&2
+fi
+
 echo "cli-s5cmd: installed $(/usr/local/bin/s5cmd version)"

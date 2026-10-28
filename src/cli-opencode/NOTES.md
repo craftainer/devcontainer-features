@@ -279,3 +279,7 @@ or `HTTP_PROXY`, also set `NO_PROXY=localhost,127.0.0.1` (same page).
 Debian and Ubuntu (glibc), on amd64 and arm64. The x64 build needs a CPU
 with AVX2. The install adds `curl` and `ca-certificates` if either is
 missing.
+
+## License
+
+opencode is MIT-licensed ([LICENSE](https://github.com/anomalyco/opencode/blob/dev/LICENSE)). Its release tarball holds only the binary, so the feature installs no license file.

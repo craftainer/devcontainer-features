@@ -10,6 +10,7 @@ source dev-container-features-test-lib
 source "$(dirname "$0")/valkey-checks.sh"
 
 expect_installed "$(scenario_version option_channel)"
+expect_license_notice /usr/local/share/doc/valkey-cli/LICENSE "BSD 3-Clause License"
 check "valkey-cli talks to a local valkey-server, with REDISCLI_AUTH and VALKEYCLI_AUTH" \
     valkey_server_smoke "$(scenario_version option_channel)" \
     "$(scenario_option option_channel sha256_amd64)" \

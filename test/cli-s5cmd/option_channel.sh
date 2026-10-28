@@ -9,5 +9,6 @@ source dev-container-features-test-lib
 source "$(dirname "$0")/s5cmd-checks.sh"
 
 expect_installed "$(scenario_version option_channel)"
+expect_license_notice /usr/local/share/doc/s5cmd/LICENSE "Permission is hereby granted"
 
 reportResults
