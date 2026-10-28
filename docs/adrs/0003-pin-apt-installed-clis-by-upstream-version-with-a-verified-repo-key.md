@@ -53,7 +53,10 @@ fit:
 
 **Version-only pins for apt-installed CLIs.** `cli-postgres-client` and
 `cli-mosquitto` take a version and no sha. Every download-based feature
-keeps 0002's version plus sha unchanged. `il_resolve_version <ID>`
+keeps 0002's version plus sha unchanged. That includes `cli-valkey`:
+although Valkey is packaged for Debian and Ubuntu, the feature downloads
+upstream's prebuilt `valkey-cli` tarball and checks it against the
+consumer's per-arch sha, so it isn't apt-pinned. `il_resolve_version <ID>`
 resolves the version through 0002's channels and order: the `version`
 option, then `<ID>_VERSION` in the image environment, then the pins file.
 The first channel that sets it wins. With none, the install fails naming
