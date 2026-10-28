@@ -291,7 +291,9 @@ Publishing needs, once, in the repository's Actions settings, only the
 pushes with the release job's `GITHUB_TOKEN` (as `GITHUB_ACTOR`), which
 works once template-sync has brought in a base `release.yml` whose `build`
 job grants `packages: write`; until then GHCR denies the push and
-`make publish` fails. `OCI_IMAGE_NAME` is optional and defaults to
+`make publish` fails
+([ADR 0005](docs/adrs/0005-publish-to-ghcr-with-github-token.md)).
+`OCI_IMAGE_NAME` is optional and defaults to
 `craftainer/devcontainer-features`. The `OCI_REGISTRY_USERNAME` and
 `OCI_REGISTRY_PASSWORD` secrets, when set, take precedence (both are then
 required), and are needed for any registry other than `ghcr.io`; to move
