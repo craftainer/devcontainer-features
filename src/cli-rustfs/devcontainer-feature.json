@@ -1,0 +1,31 @@
+{
+  "id": "cli-rustfs",
+  "version": "1.0.0",
+  "name": "RustFS CLI (rc)",
+  "description": "Installs rc, RustFS's S3 client, from the upstream .deb at an exact version, checked against a sha256 you supply. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-rustfs",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["rustfs", "rc", "s3", "object storage", "cli"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "rc (rustfs-cli) version to install, without the leading v (e.g. 0.1.36). Set it with its sha256 here, or as CLI_RUSTFS_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "sha256_amd64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of rustfs-cli_<version>_amd64.deb, needed on amd64. Set it here, or as CLI_RUSTFS_SHA256_AMD64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "sha256_arm64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of rustfs-cli_<version>_arm64.deb, needed on arm64. Set it here, or as CLI_RUSTFS_SHA256_ARM64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set a pin. Empty means /etc/devcontainer-features/pins.env."
+    }
+  }
+}

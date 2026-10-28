@@ -1,0 +1,59 @@
+{
+  "option_channel": {
+    "//renovate": "datasource=github-releases depName=rustfs/cli extractVersion=^v(?<version>.+)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-rustfs": {
+        "version": "0.1.36",
+        "sha256_amd64": "2eb2d646b04206112c44d65ad5107edf1d164fc93f705c978397bc11eb29a95f",
+        "sha256_arm64": "c5ad321059d6478994ee7f07abe131b81def0a09352f08df6eb982c612659ccb"
+      }
+    }
+  },
+  "env_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-rustfs": {}
+    }
+  },
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-rustfs": {}
+    }
+  },
+  "pins_file_option": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-rustfs": {
+        "pins_file": "/opt/pins/rustfs.env"
+      }
+    }
+  },
+  "rejects_bad_pins": {
+    "//renovate": "datasource=github-releases depName=rustfs/cli extractVersion=^v(?<version>.+)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-rustfs": {
+        "version": "0.1.36",
+        "sha256_amd64": "2eb2d646b04206112c44d65ad5107edf1d164fc93f705c978397bc11eb29a95f",
+        "sha256_arm64": "c5ad321059d6478994ee7f07abe131b81def0a09352f08df6eb982c612659ccb"
+      }
+    }
+  }
+}
