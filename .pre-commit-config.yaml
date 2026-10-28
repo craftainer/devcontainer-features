@@ -57,7 +57,7 @@ repos:
         # install-lib.sh declares its shell (bash) with a directive;
         # --external-sources lets install.sh follow its sourced copy.
         args: [--external-sources, --source-path=SCRIPTDIR]
-        files: ^(src/.*|common/[^/]*|scripts/(check|collection|test-collection)-[^/]*)\.sh$
+        files: ^(src/.*|common/[^/]*|scripts/(check-[^/]*|release-features))\.sh$
         stages: [pre-commit, manual]
 
   - repo: local
@@ -110,14 +110,4 @@ repos:
         language: system
         pass_filenames: false
         always_run: true
-        stages: [pre-commit, manual]
-
-      # The collection release's tag and notes logic (features.yml's
-      # release job), tested against throwaway git repos.
-      - id: collection-release
-        name: collection-release (release tag and notes rules)
-        entry: scripts/test-collection-release.sh
-        language: system
-        files: ^scripts/(collection-release|test-collection-release)\.sh$
-        pass_filenames: false
         stages: [pre-commit, manual]
