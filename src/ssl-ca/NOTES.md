@@ -3,18 +3,25 @@
 `ssl-ca` adds your organization's root CA certificates (for example the CA
 of a TLS-inspecting proxy) to the container's trust store:
 
-1. It collects certificates from up to three sources (below), checks each
-   one with `openssl x509` and writes the new ones to
+1. It checks all its inputs first: a malformed URL list (a bad scheme, a
+   bad sha, a different number of URLs and shas) fails before anything is
+   downloaded or installed.
+2. It checks the inline certificates and the pre-placed `*.crt` files
+   with `openssl x509`, writes the new ones to
    `/usr/local/share/ca-certificates/ssl-ca-<fingerprint>.crt`, named by
    the first 16 hex digits of the certificate's sha256 fingerprint, so a
-   re-run doesn't duplicate them. `*.crt` files already in that directory
-   are kept.
-2. It runs `update-ca-certificates`, which rebuilds the system bundle
-   `/etc/ssl/certs/ca-certificates.crt` and the hashed directory
-   `/etc/ssl/certs`, then checks every certificate made it into the bundle.
-3. It imports every certificate in `/usr/local/share/ca-certificates`
+   re-run doesn't duplicate them, and keeps the files already in that
+   directory. Then it runs `update-ca-certificates`, which rebuilds the
+   system bundle `/etc/ssl/certs/ca-certificates.crt` and the hashed
+   directory `/etc/ssl/certs`.
+3. Only then does it fetch the URLs, so their https connections already
+   trust the CAs from step 2 (see "Behind a TLS-intercepting proxy"). It
+   checks and installs those certificates the same way and runs
+   `update-ca-certificates` again, then checks every certificate made it
+   into the bundle.
+4. It imports every certificate in `/usr/local/share/ca-certificates`
    into each JDK's `cacerts` it finds (see "Java").
-4. Through `containerEnv` it points the usual per-tool CA variables at the
+5. Through `containerEnv` it points the usual per-tool CA variables at the
    system bundle (see "Environment variables").
 
 With no certificate from any source the install fails, naming all of
@@ -83,9 +90,17 @@ the download trustworthy, whatever the scheme.
 
 Get each sha with `curl -fsSL <url> | sha256sum` and check it against
 what your PKI team publishes. Fetching a URL needs `curl`, which the
-install adds if it is missing; the download itself goes through the trust
-store as it is before this feature runs, so an https URL behind the very
-proxy whose CA you are installing may need `http://` or `file:///`.
+install adds if it is missing.
+
+**Behind a TLS-intercepting proxy.** The URLs are fetched after the
+inline (`certs`) and pre-placed certificates are already in the system
+trust store, and curl checks the download's TLS connection against that
+store. So if the proxy re-signs https traffic, supply the proxy's CA
+through `certs` or a pre-placed `.crt`, and the https URLs (for your other
+internal CAs, say) download through it. A proxy CA that is itself only
+reachable through one of the `urls` can't be trusted in time for its own
+download: use `http://`, `file:///`, `certs` or a pre-placed file for that
+one.
 
 ### A certificate already in your image
 
@@ -111,7 +126,10 @@ COPY corp-root-ca.pem /usr/local/share/ca-certificates/corp-root-ca.crt
 The pins file is `/etc/devcontainer-features/pins.env` unless the
 `pins_file` option names another path. It is parsed, not sourced, and can
 hold the pins of every feature in this collection; `ssl-ca` reads only
-`SSL_CA_CERTS`, `SSL_CA_URLS` and `SSL_CA_SHA256S`.
+`SSL_CA_CERTS`, `SSL_CA_URLS` and `SSL_CA_SHA256S`. If the `pins_file`
+option names a file that doesn't exist, the install prints a warning (a
+typo or a missing `COPY` is the usual cause), even when the options or the
+image environment supply the certificates.
 
 ```sh
 # pins.env

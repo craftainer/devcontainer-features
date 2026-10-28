@@ -109,30 +109,46 @@ _ensure_curl() {
 # without --cacert, so curl uses CURL_CA_BUNDLE (containerEnv) or its
 # default store. Returns curl's status.
 _https_get() {
-    local d="$1" o port pid status=0 i
-    o="$(mktemp -d)" || return 1
-    _make_leaf "$d" "$o" || return 1
+    local status=0
     _ensure_curl || return 1
-    port=$((20000 + RANDOM % 20000))
-    openssl s_server -quiet -www -accept "$port" -cert "$o/leaf.pem" -key "$o/leaf.key" \
-        </dev/null >/dev/null 2>&1 &
-    pid=$!
+    start_https_server "$1" || return 1
+    curl -sS -o /dev/null --max-time 10 "https://localhost:${server_port}/" || status=$?
+    stop_https_server
+    return "$status"
+}
+
+# start_https_server <ca dir> [docroot]: starts openssl s_server on
+# https://localhost:$server_port/ with a fresh leaf that CA signed. Without
+# a docroot it answers every GET with a status page (-www); with one it
+# serves the files in it (-WWW). Sets server_port, server_pid, server_tmp.
+start_https_server() {
+    local d="$1" root="${2:-}" i mode=-www
+    server_tmp="$(mktemp -d)" || return 1
+    _make_leaf "$d" "$server_tmp" || return 1
+    server_port=$((20000 + RANDOM % 20000))
+    [ -z "$root" ] || mode=-WWW
+    (
+        cd "${root:-/}" || exit 1
+        exec openssl s_server -quiet "$mode" -accept "$server_port" \
+            -cert "${server_tmp}/leaf.pem" -key "${server_tmp}/leaf.key" </dev/null >/dev/null 2>&1
+    ) &
+    server_pid=$!
     for i in $(seq 50); do
-        if (exec 3<>"/dev/tcp/127.0.0.1/${port}") 2>/dev/null; then
-            break
+        if (exec 3<>"/dev/tcp/127.0.0.1/${server_port}") 2>/dev/null; then
+            return 0
         fi
-        [ "$i" -lt 50 ] || {
-            echo "openssl s_server didn't listen on ${port}" >&2
-            kill "$pid"
-            return 1
-        }
+        [ "$i" -lt 50 ] || break
         sleep 0.1
     done
-    curl -sS -o /dev/null --max-time 10 "https://localhost:${port}/" || status=$?
-    kill "$pid" 2>/dev/null || true
-    wait "$pid" 2>/dev/null || true
-    rm -rf "$o"
-    return "$status"
+    echo "openssl s_server didn't listen on ${server_port}" >&2
+    stop_https_server
+    return 1
+}
+
+stop_https_server() {
+    kill "$server_pid" 2>/dev/null || true
+    wait "$server_pid" 2>/dev/null || true
+    rm -rf "$server_tmp"
 }
 
 # tls_trusted <ca dir>: curl completes a TLS handshake with a server whose
