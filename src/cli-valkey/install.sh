@@ -24,7 +24,8 @@ trap 'rm -rf "$tmp"' EXIT
 
 # The noble build is used on every supported distro: it needs glibc 2.38
 # and OpenSSL 3 (libssl.so.3, libcrypto.so.3), which Debian 13 and Ubuntu
-# 24.04 both ship in their base images. Upstream's other Linux build
+# 24.04 both package (OpenSSL 3 is installed below when it's missing).
+# Upstream's other Linux build
 # (jammy) targets older systems this collection doesn't support.
 dir="valkey-${IL_VERSION}-noble-${asset_arch}"
 asset="${dir}.tar.gz"

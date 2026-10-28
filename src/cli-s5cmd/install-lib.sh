@@ -548,10 +548,22 @@ il_apt_install_pinned() {
             "apt sources; available: $(printf '%s' "$available" | tr '\n' ' ')"
     fi
     # sort -V doesn't order epochs or "~" the way dpkg does; dpkg decides.
+    # Status 1 is "not greater"; anything above (a version dpkg can't
+    # parse, dpkg missing) fails rather than keeping an arbitrary match.
+    local cmp
     for candidate in "${matches[@]}"; do
-        if [ -z "$chosen" ] || dpkg --compare-versions "$candidate" gt "$chosen"; then
+        if [ -z "$chosen" ]; then
             chosen="$candidate"
+            continue
         fi
+        cmp=0
+        dpkg --compare-versions "$candidate" gt "$chosen" || cmp=$?
+        case "$cmp" in
+            0) chosen="$candidate" ;;
+            1) ;;
+            *) _il_die "il_apt_install_pinned: dpkg --compare-versions failed" \
+                "(status ${cmp}) comparing ${candidate} with ${chosen}" ;;
+        esac
     done
     if [ "${#matches[@]}" -gt 1 ]; then
         echo "install-lib: ${pkg} ${version}: ${#matches[@]} revisions, installing ${chosen}"

@@ -87,9 +87,12 @@ rebuild of a version, for example `17.6-1.pgdg13+1` and `17.6-2.pgdg13+1`.
 With it added, failing on several candidates would reject most pins on
 Debian 13, and repo.mosquitto.org can carry a 2.0.x that the distro also
 has. The user chose the highest revision over failing (the collection's
-plan, Decision log, 2026-10-28). It is the revision apt itself would pick
-as the candidate, and the newest rebuild carries the packager's latest
-fixes.
+plan, Decision log, 2026-10-28): the newest rebuild carries the
+packager's latest fixes. The choice goes by version alone. It ignores
+apt pin priorities and which source a candidate comes from, so with
+several sources carrying the same upstream version it can differ from
+the candidate apt would pick, for example a distro `2.0.22-1` wins over a
+vendor `2.0.22-0mosquitto1`.
 
 **Exact-version dependencies are pinned with the package.** Every
 unconditional `name (= version)` entry in the chosen version's `Depends`
