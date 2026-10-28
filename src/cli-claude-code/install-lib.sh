@@ -495,11 +495,14 @@ _il_apt_key_prepare() (
 # <version> (e.g. 18.6, 2.0.22; digits and dots), whatever the distro's
 # revision (ADR 0003). Runs apt-get update, then picks from
 # `apt-cache madison <pkg>` the candidate whose version is exactly
-# <version>-<revision>, optionally with an epoch ("N:"). Exactly one
-# candidate is installed with --no-install-recommends; none, or several,
-# fail listing the versions available. apt checks the repository's
-# signature; there is no sha. Removes the apt lists afterwards, like
-# il_apt_install.
+# <version>-<revision>, optionally with an epoch ("N:"). The highest of
+# them by `dpkg --compare-versions` (epoch first, "~" before anything) is
+# installed with --no-install-recommends, logging the choice when there
+# were several (an archive such as PGDG's keeps every rebuild of a
+# version). None fails listing the versions available. apt checks the
+# repository's signature; there is no sha. It never downgrades an
+# installed newer version (no --allow-downgrades). Removes the apt lists
+# afterwards, like il_apt_install.
 #
 # apt pins only the package named on the command line: a dependency keeps
 # its newest candidate, so mosquitto-clients 2.0.22, which Depends on
@@ -515,7 +518,7 @@ il_apt_install_pinned() {
     if [ "$#" -ne 2 ]; then
         _il_die "usage: il_apt_install_pinned <pkg> <version>"
     fi
-    local pkg="$1" version="$2" available candidate
+    local pkg="$1" version="$2" available candidate chosen=""
     local -a matches=()
     if ! [[ "$pkg" =~ ^[a-z0-9][a-z0-9+.-]+$ ]]; then
         _il_die "il_apt_install_pinned: invalid package name '${pkg}'"
@@ -540,18 +543,22 @@ il_apt_install_pinned() {
             matches+=("$candidate")
         fi
     done <<<"$available"
-    case "${#matches[@]}" in
-        0)
-            _il_die "il_apt_install_pinned: no ${pkg} ${version}-<revision> in the configured" \
-                "apt sources; available: $(printf '%s' "$available" | tr '\n' ' ')" ;;
-        1) ;;
-        *)
-            _il_die "il_apt_install_pinned: several ${pkg} candidates for ${version}:" \
-                "${matches[*]}; the pin can't choose between them" ;;
-    esac
+    if [ "${#matches[@]}" -eq 0 ]; then
+        _il_die "il_apt_install_pinned: no ${pkg} ${version}-<revision> in the configured" \
+            "apt sources; available: $(printf '%s' "$available" | tr '\n' ' ')"
+    fi
+    # sort -V doesn't order epochs or "~" the way dpkg does; dpkg decides.
+    for candidate in "${matches[@]}"; do
+        if [ -z "$chosen" ] || dpkg --compare-versions "$candidate" gt "$chosen"; then
+            chosen="$candidate"
+        fi
+    done
+    if [ "${#matches[@]}" -gt 1 ]; then
+        echo "install-lib: ${pkg} ${version}: ${#matches[@]} revisions, installing ${chosen}"
+    fi
     local -a deps=() auto=()
     local dep manual
-    mapfile -t deps < <(_il_apt_exact_deps "$pkg" "${matches[0]}")
+    mapfile -t deps < <(_il_apt_exact_deps "$pkg" "$chosen")
     if [ "${#deps[@]}" -gt 0 ] && [ -z "${deps[-1]}" ]; then
         exit 1 # _il_apt_exact_deps failed; it printed why
     fi
@@ -561,9 +568,9 @@ il_apt_install_pinned() {
             auto+=("${dep%%=*}")
         fi
     done
-    echo "install-lib: installing ${pkg}=${matches[0]} ${deps[*]}"
-    apt-get install -y --no-install-recommends "${pkg}=${matches[0]}" "${deps[@]}" \
-        || _il_die "apt-get install failed: ${pkg}=${matches[0]} ${deps[*]}"
+    echo "install-lib: installing ${pkg}=${chosen} ${deps[*]}"
+    apt-get install -y --no-install-recommends "${pkg}=${chosen}" "${deps[@]}" \
+        || _il_die "apt-get install failed: ${pkg}=${chosen} ${deps[*]}"
     if [ "${#auto[@]}" -gt 0 ]; then
         apt-mark auto "${auto[@]}" >/dev/null \
             || _il_die "apt-mark auto failed: ${auto[*]}"

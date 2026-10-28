@@ -68,11 +68,25 @@ It is checked before it is logged or reaches apt.
 1. runs `apt-get update`;
 2. reads `apt-cache madison <pkg>` and takes the candidates whose version
    is exactly `<version>-<revision>`, optionally with an epoch `N:`;
-3. installs exactly one with `--no-install-recommends`. None, or several,
-   fails and lists the versions available.
+3. installs the highest of them, compared with `dpkg --compare-versions`
+   (so epochs and `~` order as apt orders them), with
+   `--no-install-recommends`. When there are several, the log names how
+   many and which one is installed. None fails and lists the versions
+   available. An installed newer version isn't downgraded: apt-get runs
+   without `--allow-downgrades`, so the install fails instead.
 
 The revision isn't pinned, so one pin works on every distro the
-repository builds for.
+repository builds for, and on every rebuild of the version.
+
+**The highest revision wins.** PGDG's archive suite
+(`<codename>-pgdg-archive` at apt-archive.postgresql.org) keeps every
+rebuild of a version, for example `17.6-1.pgdg13+1` and `17.6-2.pgdg13+1`.
+With it added, failing on several candidates would reject most pins on
+Debian 13, and repo.mosquitto.org can carry a 2.0.x that the distro also
+has. The user chose the highest revision over failing (the collection's
+plan, Decision log, 2026-10-28). It is the revision apt itself would pick
+as the candidate, and the newest rebuild carries the packager's latest
+fixes.
 
 **Exact-version dependencies are pinned with the package.** Every
 unconditional `name (= version)` entry in the chosen version's `Depends`
@@ -141,8 +155,14 @@ real curl calls ("call 2/4").
   repository's signing key for the bytes. The key itself is pinned in the
   feature, so a substituted key fails the install.
 - One pin (`18.6`) works on Debian and Ubuntu, amd64 and arm64. When the
-  repository publishes two revisions of the same upstream version, the
-  install fails until one of them is gone, rather than guessing.
+  sources carry several revisions of the same upstream version, the
+  highest is installed; a pin no longer fails on "several candidates".
+- A rebuild of a pinned version (say `17.6-3` after `17.6-2`) is picked up
+  by the next build without a pin change. That is what not pinning the
+  Debian revision means: the consumer pins the upstream version, and the
+  repository's signing key vouches for the revision.
+- The exact-version dependencies follow the chosen revision: they are
+  read from that version's record (`apt-cache show <pkg>=<revision>`).
 - A repository can drop an old version. The pin then fails with the list
   of what's available, the same way a deleted download fails a sha pin.
 - Mosquitto's available versions differ by distro, so `cli-mosquitto`'s

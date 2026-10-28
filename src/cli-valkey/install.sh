@@ -34,6 +34,16 @@ il_fetch_verified "$url" "$IL_SHA256" "${tmp}/${asset}"
 tar -xzf "${tmp}/${asset}" -C "$tmp" --no-same-owner "${dir}/bin/valkey-cli"
 il_install_bin "${tmp}/${dir}/bin/valkey-cli" valkey-cli
 
+# valkey-cli links libssl.so.3 and libcrypto.so.3. The debian:13 and
+# ubuntu:24.04 images have them today only as a dependency of other
+# packages (coreutils, apt), so install them here when they're missing
+# rather than rely on that; libssl3t64 is OpenSSL 3's package name on both
+# Debian 13 and Ubuntu 24.04. grep without -q reads all of
+# ldconfig's output, so pipefail can't see a SIGPIPE.
+if ! ldconfig -p | grep -F 'libssl.so.3 ' >/dev/null; then
+    il_apt_install libssl3t64
+fi
+
 # A separate assignment, so a binary that can't start (missing glibc 2.38
 # or libssl.so.3) fails the install under set -e instead of being masked
 # inside echo's arguments.
