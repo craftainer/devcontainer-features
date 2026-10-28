@@ -53,11 +53,11 @@ repos:
     rev: v0.11.0.1
     hooks:
       - id: shellcheck
-        name: shellcheck (features, install-lib, check scripts)
+        name: shellcheck (features, install-lib, check and release scripts)
         # install-lib.sh declares its shell (bash) with a directive;
         # --external-sources lets install.sh follow its sourced copy.
         args: [--external-sources, --source-path=SCRIPTDIR]
-        files: ^(src/.*|common/[^/]*|scripts/check-[^/]*)\.sh$
+        files: ^(src/.*|common/[^/]*|scripts/(check-[^/]*|release-features))\.sh$
         stages: [pre-commit, manual]
 
   - repo: local

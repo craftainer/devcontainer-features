@@ -12,8 +12,8 @@ ignore:
   - test/
   - common/
 
-  # Validates, tests and publishes the features with devcontainers/action
-  # (see docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md).
+  # Validates and tests the features, and opens the README PR after a full
+  # release (see docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md).
   - .github/workflows/features.yml
 
   # The local prek hooks' scripts (install-lib copy drift, feature options,
@@ -21,6 +21,11 @@ ignore:
   # wired up in .pre-commit-config.yaml, which is merge tier, so sync keeps
   # those hook entries.
   - scripts/check-*.sh
+
+  # The Makefile's release-contract helper (package, check and publish the
+  # features; docs/adrs/0004-collection-github-releases.md). The Makefile
+  # itself is instance-owned in base's manifest already.
+  - scripts/release-features.sh
 
   # The Dev Container CLI hook. Base's scripts/develop.d/*.sh already
   # ignores it; listed here too so this file names everything this repo adds.

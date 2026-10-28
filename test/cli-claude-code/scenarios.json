@@ -1,0 +1,73 @@
+{
+  "option_channel": {
+    "//renovate": "datasource=npm depName=@anthropic-ai/claude-code",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-claude-code": {
+        "version": "2.1.312",
+        "sha256_amd64": "4f4178ce41d83e23341ebfbaecdbcf8ea6bf7baea0690025abe49eeec3a5d01d",
+        "sha256_arm64": "dc4af28917455e009d26704b82a438353a06149e825b6cdf782908b2d28661f5"
+      }
+    }
+  },
+  "env_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-claude-code": {}
+    }
+  },
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-claude-code": {}
+    }
+  },
+  "state_dir": {
+    "//renovate": "datasource=npm depName=@anthropic-ai/claude-code",
+    "features": {
+      "cli-claude-code": {
+        "version": "2.1.312",
+        "sha256_amd64": "4f4178ce41d83e23341ebfbaecdbcf8ea6bf7baea0690025abe49eeec3a5d01d",
+        "sha256_arm64": "dc4af28917455e009d26704b82a438353a06149e825b6cdf782908b2d28661f5"
+      }
+    },
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    }
+  },
+  "container_env": {
+    "//renovate": "datasource=npm depName=@anthropic-ai/claude-code",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-claude-code": {
+        "version": "2.1.312",
+        "sha256_amd64": "4f4178ce41d83e23341ebfbaecdbcf8ea6bf7baea0690025abe49eeec3a5d01d",
+        "sha256_arm64": "dc4af28917455e009d26704b82a438353a06149e825b6cdf782908b2d28661f5"
+      }
+    }
+  },
+  "rejects_bad_pins": {
+    "//renovate": "datasource=npm depName=@anthropic-ai/claude-code",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-claude-code": {
+        "version": "2.1.312",
+        "sha256_amd64": "4f4178ce41d83e23341ebfbaecdbcf8ea6bf7baea0690025abe49eeec3a5d01d",
+        "sha256_arm64": "dc4af28917455e009d26704b82a438353a06149e825b6cdf782908b2d28661f5"
+      }
+    }
+  }
+}

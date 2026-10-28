@@ -1,0 +1,35 @@
+{
+  "id": "cli-claude-code",
+  "version": "1.0.0",
+  "name": "Claude Code",
+  "description": "Installs Anthropic's native Claude Code binary (claude) at an exact version, checked against a sha256 you supply, with its auto-updater and manual updates turned off. No Node.js needed. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-claude-code",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["claude", "claude code", "anthropic", "ai", "cli"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "Claude Code version to install (e.g. 2.1.312). Set it with its sha256 here, or as CLI_CLAUDE_CODE_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "sha256_amd64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of the linux-x64 claude binary (platforms.linux-x64.checksum in the release's manifest.json), needed on amd64. Set it here, or as CLI_CLAUDE_CODE_SHA256_AMD64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "sha256_arm64": {
+      "type": "string",
+      "default": "",
+      "description": "sha256 of the linux-arm64 claude binary (platforms.linux-arm64.checksum in the release's manifest.json), needed on arm64. Set it here, or as CLI_CLAUDE_CODE_SHA256_ARM64 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set a pin. Empty means /etc/devcontainer-features/pins.env."
+    }
+  },
+  "containerEnv": {
+    "DISABLE_AUTOUPDATER": "1",
+    "DISABLE_UPDATES": "1"
+  }
+}

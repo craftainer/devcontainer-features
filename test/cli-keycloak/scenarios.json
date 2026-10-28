@@ -1,0 +1,97 @@
+{
+  "official_option": {
+    "//renovate": "datasource=github-releases depName=keycloak/keycloak",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-keycloak": {
+        "version": "26.7.5",
+        "sha256": "87d680d13cf4600d232ca0433a2553c57ebf03e56f7718fc0d03a1a8705497c8"
+      }
+    }
+  },
+  "official_env": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-keycloak": {}
+    }
+  },
+  "official_pins_file": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-keycloak": {}
+    }
+  },
+  "official_no_jre": {
+    "//renovate": "datasource=github-releases depName=keycloak/keycloak",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-keycloak": {
+        "flavor": "official",
+        "version": "26.7.5",
+        "sha256": "87d680d13cf4600d232ca0433a2553c57ebf03e56f7718fc0d03a1a8705497c8",
+        "install_jre": false
+      }
+    }
+  },
+  "official_old_java": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-keycloak": {
+        "install_jre": false
+      }
+    }
+  },
+  "rest_option": {
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-keycloak": {
+        "flavor": "rest"
+      }
+    }
+  },
+  "rest_env": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-keycloak": {}
+    }
+  },
+  "rest_pins_file": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-keycloak": {}
+    }
+  },
+  "rejects_bad_pins": {
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-keycloak": {
+        "flavor": "rest"
+      }
+    }
+  }
+}

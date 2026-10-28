@@ -1,0 +1,44 @@
+{
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie",
+        "CLI_MOSQUITTO_VERSION_DEBIAN": "2.0.22",
+        "CLI_MOSQUITTO_VERSION_UBUNTU": "2.0.18"
+      }
+    },
+    "features": {
+      "cli-mosquitto": {}
+    }
+  },
+  "option_and_env_channels": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie",
+        "CLI_MOSQUITTO_VERSION_DEBIAN": "2.0.22",
+        "CLI_MOSQUITTO_VERSION_UBUNTU": "2.0.18"
+      }
+    },
+    "features": {
+      "cli-mosquitto": {}
+    }
+  },
+  "rejects_bad_pins": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie",
+        "CLI_MOSQUITTO_VERSION_DEBIAN": "2.0.22",
+        "CLI_MOSQUITTO_VERSION_UBUNTU": "2.0.18",
+        "PINS_PATH": "/opt/pins/mosquitto.env"
+      }
+    },
+    "features": {
+      "cli-mosquitto": {
+        "pins_file": "/opt/pins/mosquitto.env"
+      }
+    }
+  }
+}

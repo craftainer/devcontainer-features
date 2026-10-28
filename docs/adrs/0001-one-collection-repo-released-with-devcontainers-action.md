@@ -2,7 +2,12 @@
 
 ## Status
 
-Accepted
+Accepted. Amended by [0004](0004-collection-github-releases.md): the
+collection is released through base's `release.yml` and `Makefile`
+contract under a repo-wide `v<x.y.z>` tag, and a full release publishes
+the features with the Dev Container CLI; `features.yml` no longer
+publishes on `main`. `devcontainers/action` still validates the features
+and generates their READMEs.
 
 ## Context
 

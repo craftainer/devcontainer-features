@@ -1,0 +1,73 @@
+{
+  "option_channel": {
+    "//renovate": "datasource=github-releases depName=anomalyco/opencode extractVersion=^v(?<version>.*)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-opencode": {
+        "version": "1.19.5",
+        "sha256_amd64": "588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a",
+        "sha256_arm64": "fae5be262d693b7c5e562856cc473e59e741772936db0c0600ac0d5ed5bd088b"
+      }
+    }
+  },
+  "env_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-opencode": {}
+    }
+  },
+  "pins_file_channel": {
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    },
+    "features": {
+      "cli-opencode": {}
+    }
+  },
+  "state_dir": {
+    "//renovate": "datasource=github-releases depName=anomalyco/opencode extractVersion=^v(?<version>.*)$",
+    "features": {
+      "cli-opencode": {
+        "version": "1.19.5",
+        "sha256_amd64": "588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a",
+        "sha256_arm64": "fae5be262d693b7c5e562856cc473e59e741772936db0c0600ac0d5ed5bd088b"
+      }
+    },
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "BASE_IMAGE": "mcr.microsoft.com/devcontainers/base:trixie"
+      }
+    }
+  },
+  "container_env": {
+    "//renovate": "datasource=github-releases depName=anomalyco/opencode extractVersion=^v(?<version>.*)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-opencode": {
+        "version": "1.19.5",
+        "sha256_amd64": "588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a",
+        "sha256_arm64": "fae5be262d693b7c5e562856cc473e59e741772936db0c0600ac0d5ed5bd088b"
+      }
+    }
+  },
+  "rejects_bad_pins": {
+    "//renovate": "datasource=github-releases depName=anomalyco/opencode extractVersion=^v(?<version>.*)$",
+    "image": "mcr.microsoft.com/devcontainers/base:trixie",
+    "features": {
+      "cli-opencode": {
+        "version": "1.19.5",
+        "sha256_amd64": "588310a336fa3b9df36b3f0225b26f679d453efaad0cf3d66c3651ef3ec1647a",
+        "sha256_arm64": "fae5be262d693b7c5e562856cc473e59e741772936db0c0600ac0d5ed5bd088b"
+      }
+    }
+  }
+}

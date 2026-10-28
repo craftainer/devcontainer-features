@@ -1,0 +1,37 @@
+{
+  "id": "cli-keycloak",
+  "version": "1.0.0",
+  "name": "Keycloak admin CLI (kcadm)",
+  "description": "Installs a Keycloak admin CLI as kcadm: the official kcadm.sh (with a headless JRE) at an exact version, checked against a sha256 you supply, or a small curl wrapper around the Admin REST API. The two flavors share the name, not the syntax. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-keycloak",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["keycloak", "kcadm", "identity", "oidc", "cli"],
+  "options": {
+    "flavor": {
+      "type": "string",
+      "default": "",
+      "proposals": ["official", "rest"],
+      "description": "official: Keycloak's kcadm.sh, pinned, needs Java. rest: a curl wrapper, kcadm METHOD PATH [JSON], no pin. Set it here, or as CLI_KEYCLOAK_FLAVOR in the image environment, or in the pins file. Empty everywhere means official."
+    },
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "official only: Keycloak version to install (e.g. 26.7.5). Set it with its sha256 here, or as CLI_KEYCLOAK_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "sha256": {
+      "type": "string",
+      "default": "",
+      "description": "official only: sha256 of keycloak-<version>.tar.gz (the same file on every arch). Set it here, or as CLI_KEYCLOAK_SHA256 in the image environment, or in the pins file, in the same place as the version."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set the flavor or a pin. Empty means /etc/devcontainer-features/pins.env."
+    },
+    "install_jre": {
+      "type": "boolean",
+      "default": true,
+      "description": "official only: install the distro's headless JRE (default-jre-headless, Java 21 on Debian 13 and Ubuntu 24.04). Turn it off if the image already has Java 21 or newer. Ignored for rest."
+    }
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": "cli-mosquitto",
+  "version": "1.0.0",
+  "name": "Mosquitto MQTT clients",
+  "description": "Installs the Eclipse Mosquitto MQTT clients (mosquitto_pub, mosquitto_sub, mosquitto_rr) at an exact upstream version you choose, e.g. 2.0.22: on Debian from repo.mosquitto.org, whose signing key the feature pins by fingerprint, on Ubuntu from the distro's own archive. The versions available differ by distro. There are no default pins.",
+  "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-mosquitto",
+  "licenseURL": "https://github.com/craftainer/devcontainer-features/blob/main/LICENSE",
+  "keywords": ["mosquitto", "mqtt", "mosquitto_pub", "mosquitto_sub", "mosquitto_rr", "cli"],
+  "options": {
+    "version": {
+      "type": "string",
+      "default": "",
+      "description": "Mosquitto clients version to install, as the upstream version (e.g. 2.0.22), with no leading v and no Debian revision. It must exist for your distro (see the notes). Set it here, or as CLI_MOSQUITTO_VERSION in the image environment, or in the pins file. There is no default."
+    },
+    "pins_file": {
+      "type": "string",
+      "default": "",
+      "description": "Path of the pins file in the image, read when neither the options nor the image environment set the version. Empty means /etc/devcontainer-features/pins.env."
+    }
+  }
+}
