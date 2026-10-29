@@ -7,7 +7,10 @@ collection is released through base's `release.yml` and `Makefile`
 contract under a repo-wide `v<x.y.z>` tag, and a full release publishes
 the features with the Dev Container CLI; `features.yml` no longer
 publishes on `main`. `devcontainers/action` still validates the features
-and generates their READMEs.
+and generates their READMEs. Partly superseded by
+[0005](0005-publish-to-ghcr-with-github-token.md): a package first pushed
+by the release job's `GITHUB_TOKEN` is public at once, so the "made public
+by hand" consequence below no longer applies to it.
 
 ## Context
 

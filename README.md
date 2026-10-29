@@ -44,7 +44,9 @@ Every feature also takes a `pins_file` option (see below).
 
 A download feature also installs upstream's license notice, from the same
 verified artifact, under `/usr/local/share/doc/<tool>/` when the artifact
-ships one; each NOTES.md has a License section.
+ships one; each NOTES.md has a License section. If a pinned artifact
+doesn't contain the expected license file, the install warns and
+continues without the notice; it doesn't fail.
 
 ### Pin channels
 
@@ -253,7 +255,12 @@ library and [`test/README.md`](test/README.md) the scenario tests.
   plus the `_global` scenarios (see [`test/README.md`](test/README.md)).
   Merging to `main` only tests; nothing is published. After a full
   release (below), its `docs` job opens a PR with the regenerated
-  `src/<id>/README.md` files.
+  `src/<id>/README.md` files. That PR is opened with `GITHUB_TOKEN`,
+  which doesn't trigger workflows, so start its checks by hand (close and
+  reopen it, or push to its branch) before merging. Its actions are
+  pinned by full commit SHA with a `# vX.Y.Z` comment (GitHub's
+  security-hardening guide calls that the only immutable pin), stricter
+  than base's exact-tag rule; keep that form when bumping them.
 - **Checks.** `prek run --all-files --hook-stage manual` runs shellcheck
   and the hooks in `scripts/` (install-lib drift, feature options, version
   bump).
@@ -300,8 +307,17 @@ required), and are needed for any registry other than `ghcr.io`; to move
 `ghcr.io` from them to `GITHUB_TOKEN`, delete both. A feature package that
 already exists on GHCR and wasn't first pushed by this repository's
 workflow needs, once, this repository given the Write role under the
-package's "Manage Actions access" settings, or GHCR denies the push. Without
-`OCI_REGISTRY`, a full release publishes nothing and warns.
+package's "Manage Actions access" settings, or GHCR denies the push. A
+new package first pushed by `GITHUB_TOKEN` inherits this repository's
+public visibility, so there's no manual "make public" step; a package
+created any other way starts private. Without `OCI_REGISTRY`, a full
+release publishes nothing and warns.
+
+The collection is public on GHCR but deliberately not listed in the
+containers.dev / VS Code feature index (see issue #21). Listing it later
+is a PR adding one entry to `_data/collection-index.yml` on
+`devcontainers/devcontainers.github.io`'s `gh-pages` branch, after which
+outside users may depend on feature ids and options.
 
 To try the targets locally: `make build release-assets release-check`;
 `RELEASE_TAG=v1.0.0-rc.1 make publish` shows the pre-release skip.

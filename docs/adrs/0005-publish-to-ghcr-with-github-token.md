@@ -53,4 +53,10 @@ other craftainer repo's.
   repository's workflow needs, once, this repository given the Write role
   under the package's "Manage Actions access" settings, or GHCR denies the
   push.
+- A package first pushed by the release job's `GITHUB_TOKEN` inherits
+  this repository's visibility and access, so in this public repository a
+  new feature package is public at once; there's no manual "make public"
+  step (verified at v1.0.0: all 10 packages pull anonymously). This
+  replaces the "made public by hand" consequence of ADRs 0001 and 0004. A
+  package created any other way still starts private.
 - Any other registry still needs both secrets.
