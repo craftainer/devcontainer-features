@@ -9,8 +9,10 @@ every push to `main`. Partly superseded by
 [0005](0005-publish-to-ghcr-with-github-token.md): on `ghcr.io`, `publish`
 authenticates with the job's `GITHUB_TOKEN` when the registry secrets are
 empty, so the secrets are no longer required there, and a package it
-first pushes inherits this repository's public visibility, so the "made
-public by hand" consequence below no longer applies to it.
+first pushes with `GITHUB_TOKEN` inherits this repository's public
+visibility, so the "made public by hand" consequence below no longer
+applies to it (a package first pushed with the secrets still starts
+private).
 
 ## Context
 

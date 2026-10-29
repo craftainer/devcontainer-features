@@ -3,7 +3,10 @@
 ## Status
 
 Accepted. Partly supersedes
-[0004](0004-collection-github-releases.md).
+[0004](0004-collection-github-releases.md), and corrects the "made public
+by hand" consequence of
+[0001](0001-one-collection-repo-released-with-devcontainers-action.md) and
+0004 (see Consequences).
 
 ## Context
 
@@ -45,7 +48,8 @@ other craftainer repo's.
 - On GHCR, publishing needs only the `OCI_REGISTRY` variable, once this
   repo's synced `release.yml` carries `packages: write`. Until
   template-sync brings it in, GHCR denies a full release's push when the
-  secrets are empty, and `publish` fails naming that cause.
+  secrets are empty, and `publish` fails naming that cause. (Template-sync
+  v1.11.6 brought it in before v1.0.0.)
 - Moving an existing setup from the secrets to `GITHUB_TOKEN` means
   deleting both secrets; leaving one fails, and leaving both keeps using
   them.
@@ -57,6 +61,6 @@ other craftainer repo's.
   this repository's visibility and access, so in this public repository a
   new feature package is public at once; there's no manual "make public"
   step (verified at v1.0.0: all 10 packages pull anonymously). This
-  replaces the "made public by hand" consequence of ADRs 0001 and 0004. A
+  corrects the "made public by hand" consequence of ADRs 0001 and 0004. A
   package created any other way still starts private.
 - Any other registry still needs both secrets.

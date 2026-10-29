@@ -43,10 +43,11 @@ Each feature's NOTES.md has the full usage; after each full release,
 Every feature also takes a `pins_file` option (see below).
 
 A download feature also installs upstream's license notice, from the same
-verified artifact, under `/usr/local/share/doc/<tool>/` when the artifact
-ships one; each NOTES.md has a License section. If a pinned artifact
-doesn't contain the expected license file, the install warns and
-continues without the notice; it doesn't fail.
+verified artifact, under `/usr/local/share/doc/` when the artifact
+ships one; each NOTES.md has a License section and names the directory.
+If a feature that installs a notice doesn't find the expected license
+file in its pinned artifact, the install warns and continues without the
+notice; it doesn't fail.
 
 ### Pin channels
 
@@ -257,10 +258,10 @@ library and [`test/README.md`](test/README.md) the scenario tests.
   release (below), its `docs` job opens a PR with the regenerated
   `src/<id>/README.md` files. That PR is opened with `GITHUB_TOKEN`,
   which doesn't trigger workflows, so start its checks by hand (close and
-  reopen it, or push to its branch) before merging. Its actions are
-  pinned by full commit SHA with a `# vX.Y.Z` comment (GitHub's
-  security-hardening guide calls that the only immutable pin), stricter
-  than base's exact-tag rule; keep that form when bumping them.
+  reopen it, or push to its branch) before merging. `features.yml`'s
+  actions are pinned by full commit SHA with a `# vX.Y.Z` comment (as
+  GitHub's secure-use reference recommends), stricter than base's
+  exact-tag rule; keep that form when bumping them.
 - **Checks.** `prek run --all-files --hook-stage manual` runs shellcheck
   and the hooks in `scripts/` (install-lib drift, feature options, version
   bump).
@@ -295,10 +296,8 @@ collection tag.
 
 Publishing needs, once, in the repository's Actions settings, only the
 `OCI_REGISTRY` variable set to `ghcr.io`; no secrets. `make publish` then
-pushes with the release job's `GITHUB_TOKEN` (as `GITHUB_ACTOR`), which
-works once template-sync has brought in a base `release.yml` whose `build`
-job grants `packages: write`; until then GHCR denies the push and
-`make publish` fails
+pushes with the release job's `GITHUB_TOKEN` (as `GITHUB_ACTOR`); the
+synced `release.yml`'s `build` job grants it `packages: write`
 ([ADR 0005](docs/adrs/0005-publish-to-ghcr-with-github-token.md)).
 `OCI_IMAGE_NAME` is optional and defaults to
 `craftainer/devcontainer-features`. The `OCI_REGISTRY_USERNAME` and
