@@ -86,7 +86,6 @@ repos:
         pass_filenames: false
         stages: [pre-commit, manual]
 
-<<<<<<< /home/runner/work/devcontainer-features/devcontainer-features/.pre-commit-config.yaml
       # This instance's own local hooks (see
       # docs/adrs/0001-one-collection-repo-released-with-devcontainers-action.md).
       - id: install-lib-drift
@@ -112,7 +111,7 @@ repos:
         pass_filenames: false
         always_run: true
         stages: [pre-commit, manual]
-=======
+
   # Supply-chain/secret scanners (OWASP A01/A03/A04/A08 -- see
   # docs/TEMPLATE.md's "Checks"). Revs are tags, not SHAs: Renovate's
   # pre-commit manager bumps tags directly, and a SHA + "# frozen: vX"
@@ -152,4 +151,3 @@ repos:
         stages: [manual]
         always_run: false
         files: (^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|bun\.lock|uv\.lock|poetry\.lock|pdm\.lock|Pipfile\.lock|pylock\.toml|Cargo\.lock|requirements[^/]*\.txt)$
->>>>>>> /tmp/template-new/.pre-commit-config.yaml
