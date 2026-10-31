@@ -10,3 +10,19 @@ title = "template-base gitleaks config"
 
 [extend]
 useDefault = true
+
+# Instance-owned entries (this file is merge tier in template-base's sync
+# manifest: base's part above, each instance's allowlists below).
+
+[[allowlists]]
+description = "sha256 checksums of published release tarballs (keycloak, valkey): pin examples in the features' docs and test fixtures, public values, not secrets"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "match"
+paths = [
+  '''^src/cli-(keycloak|valkey)/(README|NOTES)\.md$''',
+  '''^test/cli-(keycloak|valkey)/[^/]+/(Dockerfile|pins\.env)$''',
+]
+regexes = [
+  '''CLI_(KEYCLOAK|VALKEY)_SHA256(_AMD64|_ARM64)?=''',
+]
