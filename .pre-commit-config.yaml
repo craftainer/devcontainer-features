@@ -51,18 +51,6 @@ repos:
       - id: conventional-pre-commit
         stages: [commit-msg]
 
-<<<<<<< /home/runner/work/devcontainer-features/devcontainer-features/.pre-commit-config.yaml
-  # This instance's own hooks: the features' shell code.
-  - repo: https://github.com/shellcheck-py/shellcheck-py
-    rev: v0.11.0.1
-    hooks:
-      - id: shellcheck
-        name: shellcheck (features, install-lib, check and release scripts)
-        # install-lib.sh declares its shell (bash) with a directive;
-        # --external-sources lets install.sh follow its sourced copy.
-        args: [--external-sources, --source-path=SCRIPTDIR]
-        files: ^(src/.*|common/[^/]*|scripts/(check-[^/]*|release-features))\.sh$
-=======
   # Guard for the upstream-owned scripts in .github/scripts/: base ships
   # them to every instance, whose own ruff-format hook then checks them
   # against .github/scripts/ruff.toml (the closest config wins), so an
@@ -80,7 +68,18 @@ repos:
       - id: ruff-format
         name: ruff format (.github/scripts)
         files: ^\.github/scripts/.*\.py$
->>>>>>> /tmp/template-new/.pre-commit-config.yaml
+        stages: [pre-commit, manual]
+
+  # This instance's own hooks: the features' shell code.
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1
+    hooks:
+      - id: shellcheck
+        name: shellcheck (features, install-lib, check and release scripts)
+        # install-lib.sh declares its shell (bash) with a directive;
+        # --external-sources lets install.sh follow its sourced copy.
+        args: [--external-sources, --source-path=SCRIPTDIR]
+        files: ^(src/.*|common/[^/]*|scripts/(check-[^/]*|release-features))\.sh$
         stages: [pre-commit, manual]
 
   - repo: local
