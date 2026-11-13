@@ -48,6 +48,26 @@ il_arch() {
     esac
 }
 
+# _il_retry <description> <command>...: runs the command, up to 4 times with
+# a pause of 5s, 10s and 15s between tries; returns the last status. For
+# the network steps of apt (update, a package download): a host that resets
+# some TLS handshakes (repo.mosquitto.org does, about one in three) fails
+# even apt's own Acquire::Retries, which retry within seconds.
+_il_retry() {
+    local what="$1" attempt=1 attempts=4 status=0
+    shift
+    while :; do
+        status=0
+        "$@" || status=$?
+        if [ "$status" -eq 0 ] || [ "$attempt" -ge "$attempts" ]; then
+            return "$status"
+        fi
+        echo "install-lib: ${what} failed (attempt ${attempt}/${attempts}); retrying in $((attempt * 5))s" >&2
+        sleep $((attempt * 5))
+        attempt=$((attempt + 1))
+    done
+}
+
 # il_apt_install <pkg>...: installs packages without recommends, then
 # removes the apt lists so they don't stay in the image layer.
 il_apt_install() {
@@ -55,8 +75,8 @@ il_apt_install() {
         _il_die "il_apt_install: no packages given"
     fi
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update || _il_die "apt-get update failed"
-    apt-get install -y --no-install-recommends "$@" \
+    _il_retry "apt-get update" apt-get update -o Acquire::Retries=3 || _il_die "apt-get update failed"
+    _il_retry "apt-get install" apt-get install -y -o Acquire::Retries=3 --no-install-recommends "$@" \
         || _il_die "apt-get install failed: $*"
     rm -rf /var/lib/apt/lists/*
 }
@@ -453,24 +473,9 @@ il_apt_add_repo() {
     rm -rf "$tmp"
     echo "install-lib: added apt repository ${name} (key ${fpr})"
     export DEBIAN_FRONTEND=noninteractive
-    # A repository that resets some TLS handshakes (repo.mosquitto.org does,
-    # about one in three) fails even apt's own Acquire::Retries, which retry
-    # within seconds, so the whole update is also repeated with a pause.
-    local attempt=1 attempts=4 updated=0
-    while [ "$attempt" -le "$attempts" ]; do
-        if apt-get update --error-on=any -o Acquire::Retries=3 \
-            -o Dir::Etc::SourceList="$list" -o Dir::Etc::SourceParts=- \
-            -o APT::Get::List-Cleanup=0; then
-            updated=1
-            break
-        fi
-        if [ "$attempt" -lt "$attempts" ]; then
-            echo "install-lib: apt-get update failed for ${name} (attempt ${attempt}/${attempts}); retrying in $((attempt * 5))s" >&2
-            sleep $((attempt * 5))
-        fi
-        attempt=$((attempt + 1))
-    done
-    if [ "$updated" -ne 1 ]; then
+    if ! _il_retry "apt-get update for ${name}" apt-get update --error-on=any -o Acquire::Retries=3 \
+        -o Dir::Etc::SourceList="$list" -o Dir::Etc::SourceParts=- \
+        -o APT::Get::List-Cleanup=0; then
         rm -f "$keyring" "$list"
         _il_die "apt-get update failed for the ${name} repository (${source_line}); removed ${keyring} and ${list}"
     fi
@@ -544,7 +549,7 @@ il_apt_install_pinned() {
             "(digits and dots, e.g. 18.6; no leading v, no distro revision)"
     fi
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update || _il_die "apt-get update failed"
+    _il_retry "apt-get update" apt-get update -o Acquire::Retries=3 || _il_die "apt-get update failed"
     # madison prints "pkg | version | source Packages" per version and
     # source; Sources lines (deb-src) are skipped.
     available="$(apt-cache madison "$pkg" \
@@ -597,7 +602,7 @@ il_apt_install_pinned() {
         fi
     done
     echo "install-lib: installing ${pkg}=${chosen} ${deps[*]}"
-    apt-get install -y --no-install-recommends "${pkg}=${chosen}" "${deps[@]}" \
+    _il_retry "apt-get install" apt-get install -y -o Acquire::Retries=3 --no-install-recommends "${pkg}=${chosen}" "${deps[@]}" \
         || _il_die "apt-get install failed: ${pkg}=${chosen} ${deps[*]}"
     if [ "${#auto[@]}" -gt 0 ]; then
         apt-mark auto "${auto[@]}" >/dev/null \
