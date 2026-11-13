@@ -1,6 +1,6 @@
 {
   "id": "cli-valkey",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "valkey-cli",
   "description": "Installs valkey-cli, the Valkey command-line client, from upstream's binary release at an exact version, checked against a sha256 you supply. There are no default pins.",
   "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/cli-valkey",

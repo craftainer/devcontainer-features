@@ -48,6 +48,26 @@ il_arch() {
     esac
 }
 
+# _il_retry <description> <command>...: runs the command, up to 4 times with
+# a pause of 5s, 10s and 15s between tries; returns the last status. For
+# the network steps of apt (update, a package download): a host that resets
+# some TLS handshakes (repo.mosquitto.org does, about one in three) fails
+# even apt's own Acquire::Retries, which retry within seconds.
+_il_retry() {
+    local what="$1" attempt=1 attempts=4 status=0
+    shift
+    while :; do
+        status=0
+        "$@" || status=$?
+        if [ "$status" -eq 0 ] || [ "$attempt" -ge "$attempts" ]; then
+            return "$status"
+        fi
+        echo "install-lib: ${what} failed (attempt ${attempt}/${attempts}); retrying in $((attempt * 5))s" >&2
+        sleep $((attempt * 5))
+        attempt=$((attempt + 1))
+    done
+}
+
 # il_apt_install <pkg>...: installs packages without recommends, then
 # removes the apt lists so they don't stay in the image layer.
 il_apt_install() {
@@ -55,8 +75,8 @@ il_apt_install() {
         _il_die "il_apt_install: no packages given"
     fi
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update || _il_die "apt-get update failed"
-    apt-get install -y --no-install-recommends "$@" \
+    _il_retry "apt-get update" apt-get update -o Acquire::Retries=3 || _il_die "apt-get update failed"
+    _il_retry "apt-get install" apt-get install -y -o Acquire::Retries=3 --no-install-recommends "$@" \
         || _il_die "apt-get install failed: $*"
     rm -rf /var/lib/apt/lists/*
 }
@@ -335,8 +355,9 @@ _il_ensure_curl() {
 # including the connect timeout) and HTTP 408/429/5xx; with
 # --retry-connrefused also ECONNREFUSED, but not other connect errors
 # such as EHOSTUNREACH or ENETUNREACH. This loop retries what curl
-# gives up on: DNS and connect failures (exit 6/7), resets and truncated
-# transfers (18/52/55/56), as scripts/develop.sh's fetch does.
+# gives up on: DNS and connect failures (exit 6/7), TLS handshake
+# failures such as repo.mosquitto.org's "unexpected eof" (35), resets and
+# truncated transfers (18/52/55/56), as scripts/develop.sh's fetch does.
 # Worst case: 4 curl calls of up to 4 attempts each, 16 attempts in
 # all. --connect-timeout 10 bounds each attempt's connection phase (DNS,
 # TCP and TLS) to 10s, so failing to connect costs at most about 200s
@@ -354,7 +375,7 @@ _il_curl() {
             --retry-connrefused -o "$dest" "$url" || status=$?
         case "$status" in
             0) return 0 ;;
-            6 | 7 | 18 | 52 | 55 | 56)
+            6 | 7 | 18 | 35 | 52 | 55 | 56)
                 if [ "$call" -lt "$calls" ]; then
                     echo "install-lib: curl exit ${status} (call ${call}/${calls}); retrying in $((call * 2))s: ${url}" >&2
                     sleep $((call * 2))
@@ -452,7 +473,7 @@ il_apt_add_repo() {
     rm -rf "$tmp"
     echo "install-lib: added apt repository ${name} (key ${fpr})"
     export DEBIAN_FRONTEND=noninteractive
-    if ! apt-get update --error-on=any \
+    if ! _il_retry "apt-get update for ${name}" apt-get update --error-on=any -o Acquire::Retries=3 \
         -o Dir::Etc::SourceList="$list" -o Dir::Etc::SourceParts=- \
         -o APT::Get::List-Cleanup=0; then
         rm -f "$keyring" "$list"
@@ -528,7 +549,7 @@ il_apt_install_pinned() {
             "(digits and dots, e.g. 18.6; no leading v, no distro revision)"
     fi
     export DEBIAN_FRONTEND=noninteractive
-    apt-get update || _il_die "apt-get update failed"
+    _il_retry "apt-get update" apt-get update -o Acquire::Retries=3 || _il_die "apt-get update failed"
     # madison prints "pkg | version | source Packages" per version and
     # source; Sources lines (deb-src) are skipped.
     available="$(apt-cache madison "$pkg" \
@@ -581,7 +602,7 @@ il_apt_install_pinned() {
         fi
     done
     echo "install-lib: installing ${pkg}=${chosen} ${deps[*]}"
-    apt-get install -y --no-install-recommends "${pkg}=${chosen}" "${deps[@]}" \
+    _il_retry "apt-get install" apt-get install -y -o Acquire::Retries=3 --no-install-recommends "${pkg}=${chosen}" "${deps[@]}" \
         || _il_die "apt-get install failed: ${pkg}=${chosen} ${deps[*]}"
     if [ "${#auto[@]}" -gt 0 ]; then
         apt-mark auto "${auto[@]}" >/dev/null \

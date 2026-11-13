@@ -1,6 +1,6 @@
 {
   "id": "ssl-ca",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "name": "Custom root CAs (ssl-ca)",
   "description": "Installs custom root CA certificates (inline PEM, URLs checked against a sha256 you supply, or *.crt files already in the image) into the system trust store and every JDK cacerts it finds, and points the usual per-tool CA variables at the system bundle. List it first in overrideFeatureInstallOrder.",
   "documentationURL": "https://github.com/craftainer/devcontainer-features/tree/main/src/ssl-ca",
