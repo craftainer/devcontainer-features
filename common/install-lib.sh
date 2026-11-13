@@ -453,9 +453,24 @@ il_apt_add_repo() {
     rm -rf "$tmp"
     echo "install-lib: added apt repository ${name} (key ${fpr})"
     export DEBIAN_FRONTEND=noninteractive
-    if ! apt-get update --error-on=any -o Acquire::Retries=3 \
-        -o Dir::Etc::SourceList="$list" -o Dir::Etc::SourceParts=- \
-        -o APT::Get::List-Cleanup=0; then
+    # A repository that resets some TLS handshakes (repo.mosquitto.org does,
+    # about one in three) fails even apt's own Acquire::Retries, which retry
+    # within seconds, so the whole update is also repeated with a pause.
+    local attempt=1 attempts=4 updated=0
+    while [ "$attempt" -le "$attempts" ]; do
+        if apt-get update --error-on=any -o Acquire::Retries=3 \
+            -o Dir::Etc::SourceList="$list" -o Dir::Etc::SourceParts=- \
+            -o APT::Get::List-Cleanup=0; then
+            updated=1
+            break
+        fi
+        if [ "$attempt" -lt "$attempts" ]; then
+            echo "install-lib: apt-get update failed for ${name} (attempt ${attempt}/${attempts}); retrying in $((attempt * 5))s" >&2
+            sleep $((attempt * 5))
+        fi
+        attempt=$((attempt + 1))
+    done
+    if [ "$updated" -ne 1 ]; then
         rm -f "$keyring" "$list"
         _il_die "apt-get update failed for the ${name} repository (${source_line}); removed ${keyring} and ${list}"
     fi
