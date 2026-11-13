@@ -102,7 +102,7 @@ runs `curl -fsSL --connect-timeout 10 --retry 3 --retry-max-time 60
 --retry-connrefused`. curl itself retries timeouts, `ECONNREFUSED` and
 HTTP 408/429/5xx. It doesn't retry other connect errors such as
 `EHOSTUNREACH` or `ENETUNREACH`, so the library retries DNS and connect
-failures (curl exit 6/7), resets and truncated transfers (18/52/55/56) up
+failures (curl exit 6/7), TLS handshake failures (35), resets and truncated transfers (18/52/55/56) up
 to 4 calls, as base's `scripts/develop.sh` does. That makes at most 16
 attempts, each with a connection phase (DNS, TCP and TLS) of at most 10s,
 so failing to connect costs at most about 200s with the backoff sleeps.

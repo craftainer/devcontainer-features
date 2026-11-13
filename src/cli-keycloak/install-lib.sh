@@ -335,8 +335,9 @@ _il_ensure_curl() {
 # including the connect timeout) and HTTP 408/429/5xx; with
 # --retry-connrefused also ECONNREFUSED, but not other connect errors
 # such as EHOSTUNREACH or ENETUNREACH. This loop retries what curl
-# gives up on: DNS and connect failures (exit 6/7), resets and truncated
-# transfers (18/52/55/56), as scripts/develop.sh's fetch does.
+# gives up on: DNS and connect failures (exit 6/7), TLS handshake
+# failures such as repo.mosquitto.org's "unexpected eof" (35), resets and
+# truncated transfers (18/52/55/56), as scripts/develop.sh's fetch does.
 # Worst case: 4 curl calls of up to 4 attempts each, 16 attempts in
 # all. --connect-timeout 10 bounds each attempt's connection phase (DNS,
 # TCP and TLS) to 10s, so failing to connect costs at most about 200s
@@ -354,7 +355,7 @@ _il_curl() {
             --retry-connrefused -o "$dest" "$url" || status=$?
         case "$status" in
             0) return 0 ;;
-            6 | 7 | 18 | 52 | 55 | 56)
+            6 | 7 | 18 | 35 | 52 | 55 | 56)
                 if [ "$call" -lt "$calls" ]; then
                     echo "install-lib: curl exit ${status} (call ${call}/${calls}); retrying in $((call * 2))s: ${url}" >&2
                     sleep $((call * 2))
@@ -452,7 +453,7 @@ il_apt_add_repo() {
     rm -rf "$tmp"
     echo "install-lib: added apt repository ${name} (key ${fpr})"
     export DEBIAN_FRONTEND=noninteractive
-    if ! apt-get update --error-on=any \
+    if ! apt-get update --error-on=any -o Acquire::Retries=3 \
         -o Dir::Etc::SourceList="$list" -o Dir::Etc::SourceParts=- \
         -o APT::Get::List-Cleanup=0; then
         rm -f "$keyring" "$list"
